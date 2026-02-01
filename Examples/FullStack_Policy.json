@@ -1,0 +1,40 @@
+{
+    "Meta": {
+        "Name": "Full Stack Optimization",
+        "Version": "2.0",
+        "Author": "ThemisRules"
+    },
+    "RegistryRules": [
+        {
+            "ID": "REG-001",
+            "Name": "Disable GameDVR",
+            "Path": "HKCU:\\System\\GameConfigStore",
+            "ValueName": "GameDVR_Enabled",
+            "Value": 0,
+            "Type": "DWord"
+        }
+    ],
+    "ServiceRules": [
+        {
+            "ID": "SVC-001",
+            "Name": "SysMain",
+            "State": "Stopped",
+            "StartupType": "Disabled",
+            "Description": "Disable SuperFetch for SSDs"
+        },
+        {
+            "ID": "SVC-002",
+            "Name": "DiagTrack",
+            "Action": "Absent",
+            "Description": "Remove Telemetry Service"
+        }
+    ],
+    "ProcessRules": [
+        {
+            "ID": "PROC-001",
+            "Name": "OneDrive",
+            "State": "Absent",
+            "Description": "Kill OneDrive if running"
+        }
+    ]
+}

@@ -1,0 +1,35 @@
+{
+    "Meta": {
+        "Name": "Gaming Optimization Pack",
+        "Version": "1.0",
+        "Author": "ThemisRules"
+    },
+    "RegistryRules": [
+        {
+            "ID": "THEMIS-REG-001",
+            "Name": "Disable GameDVR",
+            "Path": "HKCU:\\System\\GameConfigStore",
+            "ValueName": "GameDVR_Enabled",
+            "Value": 0,
+            "Type": "DWord",
+            "MacroLevel": "L1"
+        }
+    ],
+    "WMIRules": [
+        {
+            "ID": "THEMIS-WMI-001",
+            "Name": "Check Max Performance Power Plan",
+            "Query": "SELECT * FROM Win32_PowerPlan WHERE IsActive = TRUE",
+            "Condition": "$_.ElementName -like '*High Performance*'",
+            "MacroLevel": "L2"
+        }
+    ],
+    "ScriptRules": [
+        {
+            "ID": "THEMIS-SCR-001",
+            "Name": "Check for Running Game Launchers",
+            "Code": "if (Get-Process Steam -ErrorAction SilentlyContinue) { return $true } else { return $false }",
+            "MacroLevel": "L1"
+        }
+    ]
+}
