@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>ThemisRules</id>
+    <version>1.1.0</version>
+    <authors>Cassiel Security Team</authors>
+    <owners>Cassiel Security</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Universal Policy Engine for Auditing and Enforcement (Registry, WMI, Scripts)</description>
+    <copyright>(c) 2026 Cassiel Security. All rights reserved.</copyright>
+    <tags>Compliance Security Hardening Themis PSModule</tags>
+    <dependencies />
+  </metadata>
+  <files>
+    <file src="**\*" target="." />
+  </files>
+</package>
