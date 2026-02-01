@@ -12,7 +12,9 @@
     AliasesToExport   = @()
     PrivateData       = @{
         PSData = @{
-            Tags = @('Compliance', 'Security', 'Hardening', 'Themis')
+            Tags       = @('Compliance', 'Security', 'Hardening', 'Themis')
+            ProjectUri = 'https://github.com/damdavidprieto/ThemisRules'
+            LicenseUri = 'https://github.com/damdavidprieto/ThemisRules/blob/main/LICENSE'
         }
     }
 }
