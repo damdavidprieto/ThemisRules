@@ -1,0 +1,167 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ThemisRules Policy",
+    "type": "object",
+    "properties": {
+        "Meta": {
+            "type": "object",
+            "required": [
+                "Name",
+                "Version"
+            ],
+            "properties": {
+                "Name": {
+                    "type": "string"
+                },
+                "Version": {
+                    "type": "string"
+                },
+                "Author": {
+                    "type": "string"
+                },
+                "Description": {
+                    "type": "string"
+                }
+            }
+        },
+        "RegistryRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name",
+                    "Path",
+                    "ValueName",
+                    "Value"
+                ],
+                "properties": {
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "Path": {
+                        "type": "string"
+                    },
+                    "ValueName": {
+                        "type": "string"
+                    },
+                    "Value": {
+                        "type": [
+                            "string",
+                            "integer",
+                            "number"
+                        ]
+                    },
+                    "Type": {
+                        "type": "string",
+                        "enum": [
+                            "String",
+                            "ExpandString",
+                            "Binary",
+                            "DWord",
+                            "MultiString",
+                            "QWord"
+                        ]
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ]
+                    }
+                }
+            }
+        },
+        "ServiceRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name"
+                ],
+                "properties": {
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "State": {
+                        "type": "string",
+                        "enum": [
+                            "Running",
+                            "Stopped"
+                        ]
+                    },
+                    "StartupType": {
+                        "type": "string",
+                        "enum": [
+                            "Automatic",
+                            "Manual",
+                            "Disabled"
+                        ]
+                    },
+                    "Action": {
+                        "type": "string",
+                        "enum": [
+                            "Absent"
+                        ]
+                    }
+                }
+            }
+        },
+        "ProcessRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name"
+                ],
+                "properties": {
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "State": {
+                        "type": "string",
+                        "enum": [
+                            "Absent",
+                            "Present"
+                        ]
+                    }
+                }
+            }
+        },
+        "WMIRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name",
+                    "Query",
+                    "Condition"
+                ],
+                "properties": {
+                    "Query": {
+                        "type": "string"
+                    },
+                    "Condition": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}
