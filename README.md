@@ -1,47 +1,152 @@
-# ThemisRules Engine
+# ThemisRules v1.2.0
 
-**ThemisRules** is a professional Validation Engine for PowerShell, designed to enforce business logic, data integrity, and policy compliance through a flexible **Provider-based Architecture**.
+**Universal Policy Engine for Security Auditing and Enforcement**
 
-It allows you to define rules decoupled from your business logic, making your code cleaner, testable, and easier to maintain.
+[![PowerShell Gallery](https://img.shields.io/powershellgallery/v/ThemisRules.svg)](https://www.powershellgallery.com/packages/ThemisRules)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## 🚀 Features
+## 🎯 Features
 
-- **Provider Architecture**: Extensible design to support multiple validation sources.
-- **Policy/Rule Separation**: Define complex policies composed of reusable granular rules.
-- **Fluent API**: Easy to read and write validation logic.
-- **Integration Ready**: Designed to work seamlessly with `ArgosCCF` and `HermesConsoleUI`.
+- ✅ **MacroLevel Filtering** - Native support for hierarchical security levels (L1-L5)
+- ✅ **Policy Metadata** - Full audit trail with policy name, path, and timestamps
+- ✅ **Multi-Provider** - Registry, Service, Feature, and extensible architecture
+- ✅ **Audit & Enforce** - Check compliance or apply changes
+- ✅ **JSON-Based Policies** - Easy to read, write, and version control
 
 ## 📦 Installation
 
 ```powershell
-Install-Module -Name ThemisRules
+# Install from PowerShell Gallery
+Install-Module ThemisRules -Scope CurrentUser
+
+# Or update existing installation
+Update-Module ThemisRules
 ```
 
-## ⚡ Quick Start
+## 🚀 Quick Start
+
+### Basic Audit
 
 ```powershell
-Import-Module ThemisRules
-
-# Example usage (Conceptual)
-$policy = New-ThemisPolicy -Name "UserValidation" -Rules {
-    Rule "PasswordStrength" -On "Password" -Must { $_.Length -gt 8 }
-    Rule "EmailFormat" -On "Email" -Must { $_ -match "^[^@]+@[^@]+\.[^@]+$" }
-}
-
-Invoke-ThemisPolicy -Policy $policy -InputObject $userData
+# Audit all rules in a policy
+Invoke-ThemisPolicy -PolicyPath ".\system_security.json" -Mode Audit
 ```
 
-## 🏗️ Architecture
+### Level-Based Filtering
 
-ThemisRules is built on three core pillars:
-1.  **Core**: The central engine that processes rules.
-2.  **Providers**: Plugins that define *how* rules are evaluated (e.g., ScriptBlock, Regex, External API).
-3.  **Public API**: Clean cmdlets for end-users (`New-ThemisPolicy`, `Invoke-ThemisPolicy`).
+```powershell
+# Only audit L1 rules (basic hardening)
+Invoke-ThemisPolicy -PolicyPath ".\system_security.json" -Mode Audit -MacroLevel "L1"
+
+# Audit L1 and L2 rules (advanced hardening)
+Invoke-ThemisPolicy -PolicyPath ".\system_security.json" -Mode Audit -MacroLevel "L2"
+```
+
+### Enforcement
+
+```powershell
+# Apply L1 hardening
+Invoke-ThemisPolicy -PolicyPath ".\system_security.json" -Mode Enforce -MacroLevel "L1"
+```
+
+## 📝 Policy Format
+
+```json
+{
+  "Meta": {
+    "Name": "System Security",
+    "Version": "1.0.0"
+  },
+  "RegistryRules": [
+    {
+      "ID": "SYS-UAC-001",
+      "MacroLevel": "L1",
+      "Name": "UAC Consent Prompt",
+      "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+      "ValueName": "ConsentPromptBehaviorAdmin",
+      "Value": 2,
+      "Type": "DWord",
+      "Description": "Sets UAC to Always Notify"
+    }
+  ],
+  "ServiceRules": [
+    {
+      "ID": "SVC-XBOX-001",
+      "MacroLevel": "L3",
+      "Name": "XblAuthManager",
+      "Action": "Disable",
+      "Description": "Disables Xbox Live services"
+    }
+  ]
+}
+```
+
+## 🔍 Result Format
+
+```powershell
+Timestamp   : 2026-02-08 21:00:00
+Policy      : System Security
+PolicyPath  : C:\Policies\system_security.json
+ID          : SYS-UAC-001
+Type        : Registry
+Name        : UAC Consent Prompt
+MacroLevel  : L1
+Status      : Compliant
+IsCompliant : True
+Reason      : Value matches expected configuration.
+Actual      : 2
+```
+
+## 📊 MacroLevel Hierarchy
+
+| Level  | Description    | Use Case                      |
+| ------ | -------------- | ----------------------------- |
+| **L1** | Standard       | Basic security for all users  |
+| **L2** | Advanced       | Power users, enhanced privacy |
+| **L3** | Bunker         | High-security environments    |
+| **L4** | Singularity    | Maximum isolation             |
+| **L5** | Active Defense | Forensic monitoring (T-POD)   |
+
+## 🛠️ Supported Rule Types
+
+- **Registry** - Windows Registry keys and values
+- **Service** - Windows Services (start/stop/disable)
+- **Feature** - Windows Optional Features
+
+## 🔗 Integration Example (Cassiel)
+
+```powershell
+# Cassiel Security Framework integration
+. "$PSScriptRoot\policy_engine.ps1"
+
+$level = Get-ActiveHardeningLevel  # Returns "L1", "L2", etc.
+$results = Invoke-CassielPolicy -PolicyName "system_security" -Mode "Audit" -MacroLevel $level
+
+# Results are automatically filtered to active level
+$score = ($results | Where-Object IsCompliant).Count / $results.Count * 100
+Write-Host "Compliance Score: $score%"
+```
+
+## 📚 Documentation
+
+- [Enhancement Roadmap](THEMIS_ENHANCEMENT_REQUEST.md)
+- [Release Notes](RELEASE_NOTES_v1.2.0.md)
+- [Examples](Examples/)
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please submit a Pull Request or open an Issue.
+ThemisRules is developed as part of the **Cassiel Security Framework**. Contributions welcome!
 
 ## 📄 License
 
-This project is licensed under the **MIT License**.
+Copyright (c) 2026 Cassiel Security. All rights reserved.
+
+## 🔗 Links
+
+- **PowerShell Gallery**: https://www.powershellgallery.com/packages/ThemisRules
+- **GitHub**: (Coming soon)
+- **Cassiel Framework**: https://github.com/CassielSecurity/Cassiel
+
+---
+
+**Made with ❤️ by Cassiel Security Team**

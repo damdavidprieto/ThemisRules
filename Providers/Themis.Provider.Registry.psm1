@@ -74,7 +74,8 @@ function Invoke-ThemisRegistryRule {
         # ENFORCEMENT
         if ($Mode -eq "Enforce" -and -not $result.IsCompliant) {
             try {
-                Set-ItemProperty -Path $Rule.Path -Name $Rule.ValueName -Value $Rule.Value -Type ($Rule.Type ?? "String") -Force -ErrorAction Stop
+                $ruleType = if ($Rule.Type) { $Rule.Type } else { "String" }
+                Set-ItemProperty -Path $Rule.Path -Name $Rule.ValueName -Value $Rule.Value -Type $ruleType -Force -ErrorAction Stop
                 $result.Status = "Fixed"
                 $result.IsCompliant = $true
                 $result.Reason = "Remediated by Registry Provider."
