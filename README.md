@@ -129,7 +129,6 @@ Write-Host "Compliance Score: $score%"
 
 ## 📚 Documentation
 
-- [Enhancement Roadmap](THEMIS_ENHANCEMENT_REQUEST.md)
 - [Release Notes](RELEASE_NOTES_v1.2.0.md)
 - [Examples](Examples/)
 
@@ -144,8 +143,7 @@ Copyright (c) 2026 Cassiel Security. All rights reserved.
 ## 🔗 Links
 
 - **PowerShell Gallery**: https://www.powershellgallery.com/packages/ThemisRules
-- **GitHub**: (Coming soon)
-- **Cassiel Framework**: https://github.com/CassielSecurity/Cassiel
+- **GitHub**: https://github.com/damdavidprieto/ThemisRules
 
 ---
 
