@@ -120,4 +120,3 @@ function Invoke-ThemisServiceRule {
     return $result
 }
 
-Export-ModuleMember -Function Invoke-ThemisServiceRule

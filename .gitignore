@@ -1,3 +1,5 @@
 PSGetModuleInfo.xml
 *.log
 .vscode/
+
+output/

@@ -95,4 +95,3 @@ function Invoke-ThemisRegistryRule {
     return $result
 }
 
-Export-ModuleMember -Function Invoke-ThemisRegistryRule

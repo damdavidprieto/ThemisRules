@@ -68,4 +68,3 @@ function Invoke-ThemisProcessRule {
     return $result
 }
 
-Export-ModuleMember -Function Invoke-ThemisProcessRule

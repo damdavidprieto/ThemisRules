@@ -1,0 +1,110 @@
+BeforeAll {
+    Import-Module (Join-Path $PSScriptRoot '../ThemisRules.psd1') -Force
+
+    # TestRegistry: is a temporary registry key that Pester creates and deletes per block.
+    function New-TestPolicy {
+        param([string]$Path, [hashtable]$Content)
+        $Content | ConvertTo-Json -Depth 5 | Set-Content -Path $Path
+        $Path
+    }
+}
+
+Describe 'Invoke-ThemisPolicy' -Skip:(-not $IsWindows -and $PSVersionTable.PSEdition -eq 'Core') {
+    BeforeEach {
+        New-Item -Path 'TestRegistry:\Themis' -Force | Out-Null
+        New-ItemProperty -Path 'TestRegistry:\Themis' -Name 'Hardened' -Value 1 -PropertyType DWord | Out-Null
+        New-ItemProperty -Path 'TestRegistry:\Themis' -Name 'Telemetry' -Value 3 -PropertyType DWord | Out-Null
+
+        $policy = New-TestPolicy -Path (Join-Path $TestDrive 'policy.json') -Content @{
+            Meta          = @{ Name = 'Test policy'; Version = '1.0.0' }
+            RegistryRules = @(
+                @{ ID = 'REG-1'; MacroLevel = 'L1'; Name = 'Hardened'; Path = 'TestRegistry:\Themis'; ValueName = 'Hardened'; Value = 1; Type = 'DWord' },
+                @{ ID = 'REG-2'; MacroLevel = 'L1'; Name = 'Telemetry off'; Path = 'TestRegistry:\Themis'; ValueName = 'Telemetry'; Value = 0; Type = 'DWord' },
+                @{ ID = 'REG-3'; MacroLevel = 'L3'; Name = 'Missing value'; Path = 'TestRegistry:\Themis'; ValueName = 'Absent'; Value = 'x'; Type = 'String' }
+            )
+            ServiceRules  = @(
+                @{ ID = 'SVC-1'; MacroLevel = 'L2'; Name = "ThemisNoSuchService$(Get-Random)"; Action = 'Absent' }
+            )
+        }
+    }
+
+    It 'audits every rule and reports compliance per rule' {
+        $results = Invoke-ThemisPolicy -PolicyPath $policy -Mode Audit
+
+        $results.Count | Should -Be 4
+        ($results | Where-Object ID -EQ 'REG-1').Status | Should -Be 'Compliant'
+        ($results | Where-Object ID -EQ 'REG-2').Status | Should -Be 'Non-Compliant'
+        ($results | Where-Object ID -EQ 'REG-2').Actual | Should -Be 3
+        ($results | Where-Object ID -EQ 'REG-3').Status | Should -Be 'MissingValue'
+        ($results | Where-Object ID -EQ 'SVC-1').IsCompliant | Should -BeTrue
+    }
+
+    It 'adds policy metadata to each result' {
+        $result = Invoke-ThemisPolicy -PolicyPath $policy | Select-Object -First 1
+        $result.Policy | Should -Be 'Test policy'
+        $result.PolicyPath | Should -Be $policy
+    }
+
+    It 'evaluates only rules up to -MacroLevel' {
+        $results = Invoke-ThemisPolicy -PolicyPath $policy -MacroLevel L1
+        $results.ID | Should -Be @('REG-1', 'REG-2')
+    }
+
+    It 'does not change anything in Audit mode' {
+        Invoke-ThemisPolicy -PolicyPath $policy -Mode Audit | Out-Null
+        (Get-ItemProperty 'TestRegistry:\Themis').Telemetry | Should -Be 3
+    }
+
+    It 'fixes non-compliant registry values in Enforce mode' {
+        $result = Invoke-ThemisPolicy -PolicyPath $policy -Mode Enforce -MacroLevel L1 | Where-Object ID -EQ 'REG-2'
+
+        $result.Status | Should -Be 'Fixed'
+        (Get-ItemProperty 'TestRegistry:\Themis').Telemetry | Should -Be 0
+    }
+
+    It 'reports a missing policy file as an error' {
+        Invoke-ThemisPolicy -PolicyPath (Join-Path $TestDrive 'nope.json') -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'New-ThemisPolicy' {
+    It 'creates a policy that Invoke-ThemisPolicy can read' {
+        $path = Join-Path $TestDrive 'new.json'
+        New-ThemisPolicy -Path $path -Name 'Empty' | Should -Not -BeNullOrEmpty
+        (Get-Content $path -Raw | ConvertFrom-Json).Meta.Name | Should -Be 'Empty'
+        Invoke-ThemisPolicy -PolicyPath $path | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'Export-ThemisReport' {
+    BeforeAll {
+        $results = @(
+            [PSCustomObject]@{ Policy = 'P'; ID = 'A'; Type = 'Registry'; Name = 'Ok <rule>'; MacroLevel = 'L1'; Status = 'Compliant'; IsCompliant = $true; Reason = 'fine' },
+            [PSCustomObject]@{ Policy = 'P'; ID = 'B'; Type = 'Service'; Name = 'Bad'; MacroLevel = 'L2'; Status = 'Non-Compliant'; IsCompliant = $false; Reason = 'off' }
+        )
+    }
+
+    It 'writes JSON with a summary and the results' {
+        $file = $results | Export-ThemisReport -Path (Join-Path $TestDrive 'r.json')
+        $report = Get-Content $file.FullName -Raw | ConvertFrom-Json
+        $report.Summary.Total | Should -Be 2
+        $report.Summary.Score | Should -Be 50
+        $report.Results.ID | Should -Be @('A', 'B')
+    }
+
+    It 'writes CSV with one row per result' {
+        $file = Export-ThemisReport -InputObject $results -Path (Join-Path $TestDrive 'r.csv')
+        @(Import-Csv $file.FullName).Count | Should -Be 2
+    }
+
+    It 'writes HTML with the score and encoded values' {
+        $file = $results | Export-ThemisReport -Path (Join-Path $TestDrive 'r.html')
+        $html = Get-Content $file.FullName -Raw
+        $html | Should -Match '50%'
+        $html | Should -Match 'Ok &lt;rule&gt;'
+    }
+
+    It 'rejects an unknown extension without -Format' {
+        { $results | Export-ThemisReport -Path (Join-Path $TestDrive 'r.txt') } | Should -Throw
+    }
+}
