@@ -1,29 +1,29 @@
 function Get-ThemisProviders {
     <#
     .SYNOPSIS
-        Lists all loaded ThemisRules providers.
+        Lists the rule providers ThemisRules can dispatch to.
     .DESCRIPTION
-        Reflects into the internal provider cache to show which modules (Registry, Service, etc.) are active.
+        Each provider handles one rule section of a policy: the "Registry" provider handles
+        "RegistryRules", and so on.
+    .EXAMPLE
+        Get-ThemisProviders
+
+        Type     Command                  PolicySection
+        ----     -------                  -------------
+        Process  Invoke-ThemisProcessRule ProcessRules
+        Registry Invoke-ThemisRegistryRule RegistryRules
+        Service  Invoke-ThemisServiceRule ServiceRules
     #>
     [CmdletBinding()]
     param()
 
-    # Access internal scope variable if possible, or re-scan
-    # Since scope is tricky across modules without 'InModuleScope', we verify by commands.
-    
-    $knownTypes = @("Registry", "Service", "File", "WMI", "Script", "Process")
-    $providers = @()
+    if ($script:ProviderCache.Count -eq 0) { Initialize-ThemisProviders }
 
-    foreach ($type in $knownTypes) {
-        $cmdlet = "Invoke-Themis${type}Rule"
-        if (Get-Command $cmdlet -ErrorAction SilentlyContinue) {
-            $providers += [PSCustomObject]@{
-                Type    = $type
-                Command = $cmdlet
-                Status  = "Loaded"
-            }
+    foreach ($type in $script:ProviderCache.Keys | Sort-Object) {
+        [PSCustomObject]@{
+            Type          = $type
+            Command       = $script:ProviderCache[$type]
+            PolicySection = "${type}Rules"
         }
     }
-
-    return $providers
 }

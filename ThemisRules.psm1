@@ -1,15 +1,19 @@
-# Loader Script for ThemisRules
+<#
+.SYNOPSIS
+    ThemisRules - JSON policy engine for Windows compliance auditing and enforcement.
 
-$publicPath = Join-Path $PSScriptRoot "Public"
-$corePath = Join-Path $PSScriptRoot "Core"
+.DESCRIPTION
+    Every file is dot-sourced into this module's scope, so the engine, the providers and
+    the public functions share one scope and only the public functions are exported.
+#>
 
-# 1. Load Core
-Import-Module (Join-Path $corePath "Themis.Core.psm1") -Force -Scope Global
-
-# 2. Load Public Functions
-Get-ChildItem -Path $publicPath -Filter "*.ps1" | ForEach-Object {
-    . $_.FullName
+foreach ($folder in 'Core', 'Providers', 'Public') {
+    foreach ($file in Get-ChildItem -Path (Join-Path $PSScriptRoot $folder) -Filter '*.ps1' | Sort-Object Name) {
+        . $file.FullName
+    }
 }
 
-# 3. Export Everything
-Export-ModuleMember -Function Invoke-ThemisPolicy, Get-ThemisProviders, New-ThemisPolicy
+Initialize-ThemisProviders
+
+# Keep in sync with FunctionsToExport in ThemisRules.psd1 (Tests/Manifest.Tests.ps1 checks it).
+Export-ModuleMember -Function 'Invoke-ThemisPolicy', 'Export-ThemisReport', 'Get-ThemisProviders', 'New-ThemisPolicy'

@@ -1,35 +1,25 @@
 <#
 .SYNOPSIS
-    ThemisRules Engine v2.0 (Modular Core)
-    Universal Compliance & Policy Enforcement for Windows
+    ThemisRules policy engine core.
+    Compliance auditing and enforcement for Windows, driven by JSON policies.
 
 .DESCRIPTION
-    Dynamically loads providers from '\Providers' and dispatches rules.
-    Features: Parallel Execution, Provider Abstraction.
+    Discovers the rule providers loaded from Providers/ and dispatches rules to them.
 
 .AUTHOR
-    Cassiel Security Team
+    David Prieto
 #>
 
-# Load Providers Globals
-$ProviderCache = @{}
+# Provider registry: rule type (e.g. "Registry") -> command that evaluates it.
+$script:ProviderCache = @{}
 
 function Initialize-ThemisProviders {
-    $providerPath = Join-Path $PSScriptRoot "..\Providers"
-    $modules = Get-ChildItem -Path $providerPath -Filter "Themis.Provider.*.psm1"
-    
-    foreach ($mod in $modules) {
-        Import-Module $mod.FullName -Force -Scope Global
-        
-        # Detect Type from filename (Themis.Provider.Registry.psm1 -> Registry)
-        if ($mod.Name -match "Themis\.Provider\.(.+)\.psm1") {
-            $type = $matches[1]
-            $cmdlet = "Invoke-Themis${type}Rule"
-            
-            if (Get-Command $cmdlet -ErrorAction SilentlyContinue) {
-                $script:ProviderCache[$type] = $cmdlet
-                Write-Verbose "[Themis] Registered Provider: $type -> $cmdlet"
-            }
+    # Providers are the Invoke-Themis<Type>Rule functions dot-sourced from Providers/*.ps1.
+    $script:ProviderCache = @{}
+    foreach ($command in Get-Command -Name 'Invoke-Themis*Rule' -CommandType Function) {
+        if ($command.Name -match '^Invoke-Themis(.+)Rule$') {
+            $script:ProviderCache[$matches[1]] = $command.Name
+            Write-Verbose "[Themis] Registered Provider: $($matches[1]) -> $($command.Name)"
         }
     }
 }
@@ -50,7 +40,7 @@ function Invoke-ThemisPolicy {
         Example: -MacroLevel "L1" evaluates only L1 rules.
     
     .PARAMETER Parallel
-        Enable parallel execution (experimental).
+        Reserved. Rules always run sequentially; the switch is accepted for compatibility.
     
     .EXAMPLE
         Invoke-ThemisPolicy -PolicyPath ".\system_security.json" -Mode Audit -MacroLevel "L1"
@@ -98,7 +88,10 @@ function Invoke-ThemisPolicy {
         if ($prop.Name -match "(.+)Rules") {
             $type = $matches[1] # "Registry" from "RegistryRules"
             
-            if ($script:ProviderCache.ContainsKey($type)) {
+            if (-not $script:ProviderCache.ContainsKey($type)) {
+                Write-Warning "[Themis] No provider for '$($prop.Name)'; its rules are skipped."
+            }
+            else {
                 foreach ($rule in $prop.Value) {
                     # Apply MacroLevel filter
                     $ruleLevel = 999 # Default: include if no MacroLevel specified
@@ -127,7 +120,7 @@ function Invoke-ThemisPolicy {
     
     # 3. Execution
     if ($Parallel) {
-        Write-Verbose "Parallel flag ignored in v1.2.0 (Stability focus)."
+        Write-Verbose "-Parallel is ignored: rules run sequentially."
     }
 
     foreach ($rule in $allRules) {
@@ -165,4 +158,3 @@ function Invoke-ThemisPolicy {
     return $results
 }
 
-Export-ModuleMember -Function Invoke-ThemisPolicy
