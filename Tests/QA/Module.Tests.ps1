@@ -74,10 +74,14 @@ Describe 'Comment-based help for <Name>' -ForEach $commands {
 
 Describe 'PSScriptAnalyzer: <Name>' -ForEach $sourceFiles {
     It 'has no findings with the repository settings' {
-        # PSScriptAnalyzer can throw a NullReferenceException the first time it runs in a new
-        # process; the same call succeeds when repeated, so retry once; a second failure is reported.
-        $findings = try { Invoke-ScriptAnalyzer -Path $Path -Settings $settings -ErrorAction Stop }
-        catch { Write-Verbose "Retrying after: $($_.Exception.Message)"; Invoke-ScriptAnalyzer -Path $Path -Settings $settings }
+        # PSScriptAnalyzer sometimes throws a NullReferenceException while it loads its rules (the
+        # message depends on the Windows language); the same call succeeds when repeated, so it
+        # gets up to three attempts.
+        $findings = $null
+        for ($attempt = 1; $attempt -le 3; $attempt++) {
+            try { $findings = Invoke-ScriptAnalyzer -Path $Path -Settings $settings -ErrorAction Stop; break }
+            catch { if ($attempt -eq 3) { throw }; Start-Sleep -Seconds 1 }
+        }
         $findings | ForEach-Object { "$($_.RuleName) line $($_.Line): $($_.Message)" } | Should -BeNullOrEmpty
     }
 }
