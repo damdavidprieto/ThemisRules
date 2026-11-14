@@ -23,7 +23,10 @@ Invoke-ThemisPolicy -Baseline Windows-Workstation -MacroLevel L1 |
 - **Reports**: one result per rule, and `Export-ThemisReport` writes JSON, CSV or HTML with a
   compliance score.
 - **Safe rules**: every value from a policy is validated before it is used, and Enforce reads the
-  value back to confirm the change (Group Policy can override local settings).
+  value back to confirm the change (Group Policy can override local settings). Core Windows processes
+  (`lsass`, `winlogon`, `csrss`, `services`...) cannot be named in a process rule.
+- **Safe reports**: CSV values that start with `=`, `+`, `-` or `@` are written with a leading apostrophe,
+  so a spreadsheet does not run them as formulas.
 - Windows PowerShell 5.1 and PowerShell 7 on Windows. No dependencies. Every command has full help:
   `Get-Help Invoke-ThemisPolicy -Full`.
 
@@ -166,8 +169,7 @@ template: the package is built from the runtime files only, and the QA tests che
 command has complete help, that the code passes PSScriptAnalyzer with
 [`PSScriptAnalyzerSettings.psd1`](PSScriptAnalyzerSettings.psd1) (including Windows PowerShell 5.1
 compatibility) and that the changelog is up to date. The provider tests mock `auditpol`, `secedit`
-and the firewall cmdlets; CI also audits the real baseline on Windows PowerShell 5.1 and PowerShell 7
-in an elevated runner, and installs the built package with `Install-Module`. Pushing a `v*` tag
+and the firewall cmdlets; the CI workflow runs the baseline audit tests on its hosted Windows runner, which runs with administrator rights, on Windows PowerShell 5.1 and PowerShell 7, and installs the built package with `Install-Module`. Pushing a `v*` tag
 publishes the version to the PowerShell Gallery.
 
 See [CONTRIBUTING](.github/CONTRIBUTING.md), [SECURITY](SECURITY.md) and the [changelog](CHANGELOG.md).

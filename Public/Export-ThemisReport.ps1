@@ -75,7 +75,19 @@ function Export-ThemisReport {
                     ConvertTo-Json -Depth 5 | Set-Content -Path $Path -Encoding UTF8
             }
             'Csv' {
-                $results | Export-Csv -Path $Path -NoTypeInformation -Encoding UTF8
+                # Values that start with = + - @ or a tab/CR are read as formulas by spreadsheets
+                # (CSV injection). Registry text can come from anyone who can write the value, so
+                # such values get a leading apostrophe, the usual neutralisation.
+                $safe = foreach ($r in $results) {
+                    $copy = [ordered]@{}
+                    foreach ($prop in $r.PSObject.Properties) {
+                        $value = $prop.Value
+                        if ($value -is [string] -and $value -match '^[=+\-@\t\r]') { $value = "'" + $value }
+                        $copy[$prop.Name] = $value
+                    }
+                    [PSCustomObject]$copy
+                }
+                $safe | Export-Csv -Path $Path -NoTypeInformation -Encoding UTF8
             }
             'Html' {
                 $encode = { param($value) [System.Net.WebUtility]::HtmlEncode("$value") }

@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.3.0] - 2026-11-14
 
 ### Security
+- **CSV injection.** `Export-ThemisReport -Format Csv` wrote values such as `=HYPERLINK(...)` as they
+  were, and a spreadsheet would run them as formulas. Values that start with `=`, `+`, `-`, `@`, a tab or a
+  carriage return now get a leading apostrophe.
+- **Core Windows processes.** A process rule could name `lsass`, `winlogon`, `csrss`, `services` and
+  similar, and Enforce would stop them. These names are now refused in every mode.
 - **Registry rules could write outside the registry.** `Path` was passed straight to `New-Item` and
   `Set-ItemProperty`, so a policy could point it at the file system and `Enforce` would create files or
   change file attributes. Paths must now resolve to the registry provider and are used literally.
@@ -70,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   DiagTrack service (it stops and disables it); `Gaming_Optimization.json` no longer has `WMIRules` and
   `ScriptRules` sections, which no provider handles. The tests audit both examples.
 - Every exported command has complete help with examples.
+- `Invoke-ThemisPolicy -Parallel` is removed: it never did anything. Scripts that pass it get a parameter error.
 - Build and CI follow the structure of the Sampler module template: `PSScriptAnalyzerSettings.psd1`
   (Windows PowerShell 5.1 and PowerShell 7 compatibility rules), QA tests for help, analyzer,
   changelog and manifest, and a `Publish` workflow that also creates the GitHub release.

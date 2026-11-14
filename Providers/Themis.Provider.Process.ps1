@@ -28,6 +28,14 @@ function Invoke-ThemisProcessRule {
         return $result
     }
 
+    # Core Windows processes. Stopping them crashes or locks the session, so no policy may name them.
+    $protected = 'System', 'Idle', 'Registry', 'smss', 'csrss', 'wininit', 'winlogon', 'services', 'lsass', 'lsaiso', 'svchost', 'fontdrvhost', 'dwm'
+    if ($protected -contains $Rule.Name) {
+        $result.Status = "Error"
+        $result.Reason = "'$($Rule.Name)' is a core Windows process and cannot be used in a process rule."
+        return $result
+    }
+
     try {
         $procs = @(Get-Process -Name $Rule.Name -ErrorAction SilentlyContinue)
 

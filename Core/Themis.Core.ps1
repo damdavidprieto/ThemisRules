@@ -64,9 +64,6 @@ function Invoke-ThemisPolicy {
         Evaluate only rules up to this hardening level, L1 to L5. Rules without a level are
         always evaluated.
 
-    .PARAMETER Parallel
-        Accepted for compatibility with earlier versions; rules always run one after another.
-
     .EXAMPLE
         Invoke-ThemisPolicy -Baseline Windows-Workstation -MacroLevel L1
 
@@ -108,9 +105,7 @@ function Invoke-ThemisPolicy {
         [string]$Mode = 'Audit',
 
         [ValidatePattern('^L[1-5]$')]
-        [string]$MacroLevel = $null,
-
-        [switch]$Parallel
+        [string]$MacroLevel = $null
     )
 
     # 1. Initialize
@@ -181,9 +176,6 @@ function Invoke-ThemisPolicy {
     $results = @()
 
     # 3. Execution
-    if ($Parallel) {
-        Write-Verbose "-Parallel is ignored: rules run sequentially."
-    }
 
     foreach ($rule in $allRules) {
         $type = $rule._ProviderType
