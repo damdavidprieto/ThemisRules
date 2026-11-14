@@ -22,9 +22,17 @@ function Invoke-ThemisServiceRule {
         Actual      = $null
     }
 
+    # Get-Service treats the name as a wildcard pattern: a rule named "*" would match every
+    # service and, with Action = Absent in Enforce mode, delete them. Only exact names are allowed.
+    if ([string]::IsNullOrWhiteSpace($Rule.Name) -or [System.Management.Automation.WildcardPattern]::ContainsWildcardCharacters($Rule.Name)) {
+        $result.Status = "Error"
+        $result.Reason = "Service rule needs an exact service name without wildcards: '$($Rule.Name)'."
+        return $result
+    }
+
     try {
-        $svc = Get-Service -Name $Rule.Name -ErrorAction SilentlyContinue
-        
+        $svc = Get-Service -Name $Rule.Name -ErrorAction SilentlyContinue | Select-Object -First 1
+
         if ($null -eq $svc) {
             # Service Missing
             if ($Rule.Action -eq "Absent") {
@@ -54,7 +62,7 @@ function Invoke-ThemisServiceRule {
                 $reasons += "Startup mismatch (Expected: $($Rule.StartupType), Actual: $($svc.StartType))."
                 
                 if ($Mode -eq "Enforce") {
-                    Set-Service -Name $Rule.Name -StartupType $Rule.StartupType -ErrorAction Stop
+                    Set-Service -Name $svc.Name -StartupType $Rule.StartupType -ErrorAction Stop
                     $reasons += "[Fixed] Startup type set to $($Rule.StartupType)."
                 }
             }
@@ -67,8 +75,9 @@ function Invoke-ThemisServiceRule {
                 $reasons += "State mismatch (Expected: $($Rule.State), Actual: $($svc.Status))."
                 
                 if ($Mode -eq "Enforce") {
-                    if ($Rule.State -eq "Running") { Start-Service $Rule.Name }
-                    elseif ($Rule.State -eq "Stopped") { Stop-Service $Rule.Name -Force }
+                    if ($Rule.State -eq "Running") { Start-Service -Name $svc.Name -ErrorAction Stop }
+                    elseif ($Rule.State -eq "Stopped") { Stop-Service -Name $svc.Name -Force -ErrorAction Stop }
+                    else { throw "Unsupported service State '$($Rule.State)'. Use Running or Stopped." }
                     $reasons += "[Fixed] Service state changed to $($Rule.State)."
                 }
             }
@@ -80,8 +89,9 @@ function Invoke-ThemisServiceRule {
             $reasons += "Service exists but should be absent."
             if ($Mode -eq "Enforce") {
                 # Requires external tool usually, sc.exe
-                Stop-Service $svc.Name -Force -ErrorAction SilentlyContinue
-                sc.exe delete $svc.Name | Out-Null
+                Stop-Service -Name $svc.Name -Force -ErrorAction SilentlyContinue
+                $null = & sc.exe delete $svc.Name
+                if ($LASTEXITCODE -ne 0) { throw "sc.exe delete '$($svc.Name)' failed with exit code $LASTEXITCODE." }
                 $reasons += "[Fixed] Service deleted via SC."
             }
         }

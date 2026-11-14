@@ -67,6 +67,52 @@ Describe 'Invoke-ThemisPolicy' -Skip:(-not $IsWindows -and $PSVersionTable.PSEdi
     }
 }
 
+Describe 'Rule safety checks' -Skip:(-not $IsWindows -and $PSVersionTable.PSEdition -eq 'Core') {
+    It 'refuses a registry rule whose Path points at the file system, even in Enforce mode' {
+        $target = Join-Path $TestDrive 'not-a-key'
+        $policy = New-TestPolicy -Path (Join-Path $TestDrive 'fs.json') -Content @{
+            RegistryRules = @(@{ ID = 'FS-1'; MacroLevel = 'L1'; Name = 'Escape'; Path = $target; ValueName = 'Attributes'; Value = 'Hidden'; Type = 'String' })
+        }
+
+        $result = Invoke-ThemisPolicy -PolicyPath $policy -Mode Enforce
+
+        $result.Status | Should -Be 'Error'
+        $result.Reason | Should -Match 'not a registry path'
+        Test-Path $target | Should -BeFalse
+    }
+
+    It 'refuses process rules with wildcard names' {
+        $policy = New-TestPolicy -Path (Join-Path $TestDrive 'proc.json') -Content @{
+            ProcessRules = @(@{ ID = 'PROC-1'; MacroLevel = 'L1'; Name = '*'; State = 'Absent' })
+        }
+        $result = Invoke-ThemisPolicy -PolicyPath $policy -Mode Audit
+        $result.Status | Should -Be 'Error'
+        $result.Reason | Should -Match 'wildcard'
+    }
+
+    It 'refuses service rules with wildcard names' {
+        $policy = New-TestPolicy -Path (Join-Path $TestDrive 'svc.json') -Content @{
+            ServiceRules = @(@{ ID = 'SVC-W'; MacroLevel = 'L1'; Name = 'Win*'; Action = 'Absent' })
+        }
+        $result = Invoke-ThemisPolicy -PolicyPath $policy -Mode Audit
+        $result.Status | Should -Be 'Error'
+        $result.Reason | Should -Match 'wildcard'
+    }
+}
+
+Describe 'Get-ThemisProviders' {
+    It 'ignores matching functions defined outside the module' {
+        function global:Invoke-ThemisSpoofRule { param($Rule, $Mode) @{ Status = 'Compliant'; IsCompliant = $true } }
+        try {
+            Import-Module (Join-Path $PSScriptRoot '../ThemisRules.psd1') -Force
+            (Get-ThemisProviders).Type | Should -Be @('Process', 'Registry', 'Service')
+        }
+        finally {
+            Remove-Item Function:\Invoke-ThemisSpoofRule -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Describe 'New-ThemisPolicy' {
     It 'creates a policy that Invoke-ThemisPolicy can read' {
         $path = Join-Path $TestDrive 'new.json'

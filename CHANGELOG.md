@@ -5,7 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0] - 2026-11-13
+## [1.3.0] - 2026-11-14
+
+### Security
+- **Registry rules could write outside the registry.** `Path` was passed straight to `New-Item` and
+  `Set-ItemProperty`, so a policy could point it at the file system and `Enforce` would create files or
+  change file attributes. Paths must now resolve to the registry provider and are used literally.
+- **Wildcards in service and process names.** `Get-Service`, `Get-Process` and `Stop-Process` treat
+  names as patterns, so a rule named `*` with `"Action": "Absent"` or `"State": "Absent"` would delete
+  every service or stop every process in `Enforce` mode. Names with wildcard characters are now rejected.
+- **Provider spoofing.** Any function in the session named `Invoke-Themis*Rule` was registered as a
+  provider. Only the module's own providers are registered now.
+- `Enforce` reported `Fixed` when starting or stopping a service, stopping a process or deleting a
+  service had failed. Failures are now reported as `Error` or `EnforceFailed`.
 
 ### Fixed
 - **The module exported no functions.** 1.2.0 imported its engine and providers as separate global

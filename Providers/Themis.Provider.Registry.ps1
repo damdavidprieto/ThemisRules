@@ -5,6 +5,23 @@
     Handles 'Registry' type rules for Themis Engine.
 #>
 
+function Test-ThemisRegistryPath {
+    # True when Path resolves to the Registry provider (HKLM:, HKCU:, Registry::..., or any
+    # PSDrive backed by it). File system, environment and other providers are rejected.
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+    try {
+        $provider = $null
+        $drive = $null
+        $null = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path, [ref]$provider, [ref]$drive)
+        return ($null -ne $provider -and $provider.Name -eq 'Registry')
+    }
+    catch {
+        return $false
+    }
+}
+
 function Invoke-ThemisRegistryRule {
     param(
         [Parameter(Mandatory = $true)]
@@ -21,21 +38,33 @@ function Invoke-ThemisRegistryRule {
         Actual      = $null
     }
 
+    # Registry rules may only touch the registry. Without this check a policy could point
+    # Path at the file system and Enforce would create files or change file attributes.
+    if (-not (Test-ThemisRegistryPath -Path $Rule.Path)) {
+        $result.Status = "Error"
+        $result.Reason = "Path is not a registry path: '$($Rule.Path)'. Use a registry drive such as HKLM: or HKCU:."
+        return $result
+    }
+    if ([string]::IsNullOrWhiteSpace($Rule.ValueName)) {
+        $result.Status = "Error"
+        $result.Reason = "Registry rule has no ValueName."
+        return $result
+    }
+
     try {
-        if (-not (Test-Path $Rule.Path)) {
+        if (-not (Test-Path -LiteralPath $Rule.Path)) {
             $result.Status = "MissingKey"
             $result.Reason = "Key path not found: $($Rule.Path)"
-            
+
             if ($Mode -eq "Enforce") {
                 New-Item -Path $Rule.Path -Force | Out-Null
-                # Re-evaluate after creation if value is needed, or just continue
             }
             else {
                 return $result
             }
         }
 
-        $reg = Get-ItemProperty -Path $Rule.Path -Name $Rule.ValueName -ErrorAction SilentlyContinue
+        $reg = Get-ItemProperty -LiteralPath $Rule.Path -Name $Rule.ValueName -ErrorAction SilentlyContinue
         
         if ($null -eq $reg) {
             $result.Status = "MissingValue"
@@ -75,7 +104,7 @@ function Invoke-ThemisRegistryRule {
         if ($Mode -eq "Enforce" -and -not $result.IsCompliant) {
             try {
                 $ruleType = if ($Rule.Type) { $Rule.Type } else { "String" }
-                Set-ItemProperty -Path $Rule.Path -Name $Rule.ValueName -Value $Rule.Value -Type $ruleType -Force -ErrorAction Stop
+                Set-ItemProperty -LiteralPath $Rule.Path -Name $Rule.ValueName -Value $Rule.Value -Type $ruleType -Force -ErrorAction Stop
                 $result.Status = "Fixed"
                 $result.IsCompliant = $true
                 $result.Reason = "Remediated by Registry Provider."

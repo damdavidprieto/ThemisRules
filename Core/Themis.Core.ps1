@@ -15,8 +15,12 @@ $script:ProviderCache = @{}
 
 function Initialize-ThemisProviders {
     # Providers are the Invoke-Themis<Type>Rule functions dot-sourced from Providers/*.ps1.
+    # Only functions defined by this module count: a function with a matching name defined
+    # elsewhere in the session must not be able to register itself as a provider.
     $script:ProviderCache = @{}
+    $thisModule = $ExecutionContext.SessionState.Module
     foreach ($command in Get-Command -Name 'Invoke-Themis*Rule' -CommandType Function) {
+        if ($null -eq $thisModule -or $command.ScriptBlock.Module -ne $thisModule) { continue }
         if ($command.Name -match '^Invoke-Themis(.+)Rule$') {
             $script:ProviderCache[$matches[1]] = $command.Name
             Write-Verbose "[Themis] Registered Provider: $($matches[1]) -> $($command.Name)"

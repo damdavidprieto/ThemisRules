@@ -22,23 +22,37 @@ function Invoke-ThemisProcessRule {
         Actual      = $null
     }
 
+    # Get-Process and Stop-Process treat the name as a wildcard pattern: a rule named "*"
+    # would match, and in Enforce mode stop, every process. Only exact names are allowed.
+    if ([string]::IsNullOrWhiteSpace($Rule.Name) -or [System.Management.Automation.WildcardPattern]::ContainsWildcardCharacters($Rule.Name)) {
+        $result.Status = "Error"
+        $result.Reason = "Process rule needs an exact process name without wildcards: '$($Rule.Name)'."
+        return $result
+    }
+
     try {
-        $procs = Get-Process -Name $Rule.Name -ErrorAction SilentlyContinue
-        
-        $isRunning = ($null -ne $procs)
+        $procs = @(Get-Process -Name $Rule.Name -ErrorAction SilentlyContinue)
+
+        $isRunning = ($procs.Count -gt 0)
         $result.Actual = if ($isRunning) { "Running ($($procs.Count))" } else { "Not Running" }
 
         if ($Rule.State -eq "Absent") {
             if ($isRunning) {
                 $result.Status = "Non-Compliant"
                 $result.Reason = "Process '$($Rule.Name)' is running (Blacklisted)."
-                
+
                 if ($Mode -eq "Enforce") {
-                    Stop-Process -Name $Rule.Name -Force -ErrorAction SilentlyContinue
-                    $result.Status = "Fixed"
-                    $result.IsCompliant = $true
-                    $result.Reason = "Process terminated."
-                    $result.Actual = "Terminated"
+                    $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+                    if (@(Get-Process -Name $Rule.Name -ErrorAction SilentlyContinue).Count -eq 0) {
+                        $result.Status = "Fixed"
+                        $result.IsCompliant = $true
+                        $result.Reason = "Process terminated."
+                        $result.Actual = "Terminated"
+                    }
+                    else {
+                        $result.Status = "EnforceFailed"
+                        $result.Reason = "Could not terminate every '$($Rule.Name)' process."
+                    }
                 }
             }
             else {

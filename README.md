@@ -46,6 +46,12 @@ Invoke-ThemisPolicy -PolicyPath .\baseline.json -Mode Enforce -MacroLevel L1
 `Enforce` changes the system: registry values are written, services are started, stopped,
 reconfigured or **deleted** (`"Action": "Absent"`), and processes are stopped. Run `Audit` first.
 
+A policy is code you run with administrator rights: only run policies you wrote or got from a source
+you trust, and keep them where only administrators can edit them. Every rule is checked before it runs:
+registry rules must point at the registry (`HKLM:`, `HKCU:`, `Registry::...`), and service and process
+rules need an exact name. Wildcards such as `*` are rejected, so one rule cannot stop every process or
+delete every service.
+
 ## Policy format
 
 ```json
