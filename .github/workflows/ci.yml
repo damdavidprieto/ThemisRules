@@ -31,7 +31,7 @@ jobs:
       matrix:
         os: [windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Analyze, test and build
         shell: pwsh
@@ -41,7 +41,7 @@ jobs:
     name: Windows PowerShell 5.1 and Install-Module
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build and pack into a local repository (PowerShell 7)
         shell: pwsh
