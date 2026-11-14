@@ -44,6 +44,7 @@ $runtimeItems = @(
     'Core'
     'Providers'
     'Public'
+    'Baselines'
     'Schema'
 )
 

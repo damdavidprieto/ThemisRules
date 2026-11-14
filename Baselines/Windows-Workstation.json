@@ -1,0 +1,874 @@
+{
+    "Meta": {
+        "Name": "Windows workstation baseline",
+        "Version": "1.0.0",
+        "Author": "ThemisRules",
+        "AppliesTo": "Windows 10 and Windows 11, standalone or workgroup machines. On domain-joined machines Group Policy usually defines these settings: use the baseline to audit them.",
+        "Description": "Security settings commonly recommended by the Microsoft Security Baselines and the CIS Benchmarks for Windows. L1: safe for any machine. L2: stronger, may affect compatibility or convenience. L3: high security, turns features off. Audit first, then enforce level by level.",
+        "References": [
+            "https://learn.microsoft.com/windows/security/operating-system-security/device-management/windows-security-configuration-framework/windows-security-baselines",
+            "https://www.cisecurity.org/benchmark/microsoft_windows_desktop"
+        ]
+    },
+    "RegistryRules": [
+        {
+            "ID": "WIN-UAC-001",
+            "MacroLevel": "L1",
+            "Name": "UAC: run all administrators in Admin Approval Mode",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+            "ValueName": "EnableLUA",
+            "Value": 1,
+            "Type": "DWord",
+            "Description": "Turning UAC off runs every program with full administrator rights.",
+            "Default": 1
+        },
+        {
+            "ID": "WIN-UAC-002",
+            "MacroLevel": "L1",
+            "Name": "UAC: prompt administrators for consent on the secure desktop",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+            "ValueName": "ConsentPromptBehaviorAdmin",
+            "Value": 2,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-UAC-003",
+            "MacroLevel": "L1",
+            "Name": "UAC: show elevation prompts on the secure desktop",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+            "ValueName": "PromptOnSecureDesktop",
+            "Value": 1,
+            "Type": "DWord",
+            "Description": "Other programs cannot see or click the prompt.",
+            "Default": 1
+        },
+        {
+            "ID": "WIN-UAC-004",
+            "MacroLevel": "L1",
+            "Name": "UAC: Admin Approval Mode for the built-in Administrator",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+            "ValueName": "FilterAdministratorToken",
+            "Value": 1,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-UAC-005",
+            "MacroLevel": "L1",
+            "Name": "UAC: restrict local administrator accounts on network logons",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+            "ValueName": "LocalAccountTokenFilterPolicy",
+            "Value": 0,
+            "Type": "DWord",
+            "Description": "Limits pass-the-hash with local administrator accounts.",
+            "Default": 0
+        },
+        {
+            "ID": "WIN-UAC-006",
+            "MacroLevel": "L2",
+            "Name": "UAC: deny elevation requests from standard users",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+            "ValueName": "ConsentPromptBehaviorUser",
+            "Value": 0,
+            "Type": "DWord",
+            "Description": "Standard users cannot type administrator credentials into a prompt; administrators log on to elevate."
+        },
+        {
+            "ID": "WIN-SYS-001",
+            "MacroLevel": "L1",
+            "Name": "Lock the session after at most 15 minutes of inactivity",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+            "ValueName": "InactivityTimeoutSecs",
+            "Value": 900,
+            "Type": "DWord",
+            "Comparison": "Between",
+            "Min": 1,
+            "Max": 900,
+            "Description": "0 means the session never locks."
+        },
+        {
+            "ID": "WIN-SYS-002",
+            "MacroLevel": "L1",
+            "Name": "Disable automatic logon",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon",
+            "ValueName": "AutoAdminLogon",
+            "Value": "0",
+            "Type": "String",
+            "Description": "Automatic logon stores the password in the registry.",
+            "Default": "0"
+        },
+        {
+            "ID": "WIN-CRED-001",
+            "MacroLevel": "L1",
+            "Name": "Do not keep plain-text passwords in memory (WDigest)",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest",
+            "ValueName": "UseLogonCredential",
+            "Value": 0,
+            "Type": "DWord",
+            "Default": 0
+        },
+        {
+            "ID": "WIN-CRED-002",
+            "MacroLevel": "L1",
+            "Name": "Send NTLMv2 responses only; refuse LM and NTLM",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
+            "ValueName": "LmCompatibilityLevel",
+            "Value": 5,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-CRED-003",
+            "MacroLevel": "L1",
+            "Name": "Do not store LAN Manager password hashes",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
+            "ValueName": "NoLMHash",
+            "Value": 1,
+            "Type": "DWord",
+            "Default": 1
+        },
+        {
+            "ID": "WIN-CRED-004",
+            "MacroLevel": "L1",
+            "Name": "Block anonymous enumeration of SAM accounts",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
+            "ValueName": "RestrictAnonymousSAM",
+            "Value": 1,
+            "Type": "DWord",
+            "Default": 1
+        },
+        {
+            "ID": "WIN-CRED-005",
+            "MacroLevel": "L1",
+            "Name": "Block anonymous enumeration of SAM accounts and shares",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
+            "ValueName": "RestrictAnonymous",
+            "Value": 1,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-CRED-006",
+            "MacroLevel": "L1",
+            "Name": "Do not apply Everyone permissions to anonymous users",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
+            "ValueName": "EveryoneIncludesAnonymous",
+            "Value": 0,
+            "Type": "DWord",
+            "Default": 0
+        },
+        {
+            "ID": "WIN-CRED-007",
+            "MacroLevel": "L1",
+            "Name": "Only administrators may query the SAM remotely",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
+            "ValueName": "RestrictRemoteSAM",
+            "Value": "O:BAG:BAD:(A;;RC;;;BA)",
+            "Type": "String"
+        },
+        {
+            "ID": "WIN-CRED-008",
+            "MacroLevel": "L1",
+            "Name": "Blank passwords only work for console logons",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
+            "ValueName": "LimitBlankPasswordUse",
+            "Value": 1,
+            "Type": "DWord",
+            "Default": 1
+        },
+        {
+            "ID": "WIN-CRED-009",
+            "MacroLevel": "L2",
+            "Name": "Run LSA as a protected process",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
+            "ValueName": "RunAsPPL",
+            "Value": 1,
+            "Type": "DWord",
+            "Description": "Protects credentials in LSASS memory. Some third-party authentication plug-ins must be signed to keep working."
+        },
+        {
+            "ID": "WIN-NET-001",
+            "MacroLevel": "L1",
+            "Name": "Disable SMBv1 on the SMB server",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters",
+            "ValueName": "SMB1",
+            "Value": 0,
+            "Type": "DWord",
+            "Description": "SMBv1 was the vector of WannaCry and NotPetya."
+        },
+        {
+            "ID": "WIN-NET-002",
+            "MacroLevel": "L1",
+            "Name": "SMB server: always sign communications",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters",
+            "ValueName": "RequireSecuritySignature",
+            "Value": 1,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-NET-003",
+            "MacroLevel": "L1",
+            "Name": "SMB client: always sign communications",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanWorkstation\\Parameters",
+            "ValueName": "RequireSecuritySignature",
+            "Value": 1,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-NET-004",
+            "MacroLevel": "L1",
+            "Name": "SMB client: never send unencrypted passwords to third-party servers",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanWorkstation\\Parameters",
+            "ValueName": "EnablePlainTextPassword",
+            "Value": 0,
+            "Type": "DWord",
+            "Default": 0
+        },
+        {
+            "ID": "WIN-NET-005",
+            "MacroLevel": "L1",
+            "Name": "Turn off multicast name resolution (LLMNR)",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\DNSClient",
+            "ValueName": "EnableMulticast",
+            "Value": 0,
+            "Type": "DWord",
+            "Description": "LLMNR answers can be spoofed on the local network to capture credentials."
+        },
+        {
+            "ID": "WIN-NET-006",
+            "MacroLevel": "L2",
+            "Name": "NetBIOS name resolution: query WINS only (P-node)",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\NetBT\\Parameters",
+            "ValueName": "NodeType",
+            "Value": 2,
+            "Type": "DWord",
+            "Description": "Stops NetBIOS broadcast queries, which can be spoofed."
+        },
+        {
+            "ID": "WIN-RDP-001",
+            "MacroLevel": "L1",
+            "Name": "Remote Desktop: require Network Level Authentication",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+            "ValueName": "UserAuthentication",
+            "Value": 1,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-RDP-002",
+            "MacroLevel": "L1",
+            "Name": "Remote Desktop: high encryption level",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+            "ValueName": "MinEncryptionLevel",
+            "Value": 3,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-RDP-003",
+            "MacroLevel": "L1",
+            "Name": "Turn off solicited Remote Assistance",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+            "ValueName": "fAllowToGetHelp",
+            "Value": 0,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-RDP-004",
+            "MacroLevel": "L2",
+            "Name": "Remote Desktop: always prompt for the password",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+            "ValueName": "fPromptForPassword",
+            "Value": 1,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-WRM-001",
+            "MacroLevel": "L1",
+            "Name": "WinRM client: no Basic authentication",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Client",
+            "ValueName": "AllowBasic",
+            "Value": 0,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-WRM-002",
+            "MacroLevel": "L1",
+            "Name": "WinRM client: no unencrypted traffic",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Client",
+            "ValueName": "AllowUnencryptedTraffic",
+            "Value": 0,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-WRM-003",
+            "MacroLevel": "L1",
+            "Name": "WinRM service: no Basic authentication",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service",
+            "ValueName": "AllowBasic",
+            "Value": 0,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-WRM-004",
+            "MacroLevel": "L1",
+            "Name": "WinRM service: no unencrypted traffic",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service",
+            "ValueName": "AllowUnencryptedTraffic",
+            "Value": 0,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-MAL-001",
+            "MacroLevel": "L1",
+            "Name": "Turn off AutoPlay on all drives",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
+            "ValueName": "NoDriveTypeAutoRun",
+            "Value": 255,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-MAL-002",
+            "MacroLevel": "L1",
+            "Name": "Do not run AutoRun commands",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
+            "ValueName": "NoAutorun",
+            "Value": 1,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-MAL-003",
+            "MacroLevel": "L1",
+            "Name": "Windows Installer: never install with elevated privileges",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Installer",
+            "ValueName": "AlwaysInstallElevated",
+            "Value": 0,
+            "Type": "DWord",
+            "Description": "Otherwise any user can install an MSI package as SYSTEM.",
+            "Default": 0
+        },
+        {
+            "ID": "WIN-MAL-004",
+            "MacroLevel": "L1",
+            "Name": "Microsoft Defender: block potentially unwanted applications",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender",
+            "ValueName": "PUAProtection",
+            "Value": 1,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-MAL-005",
+            "MacroLevel": "L1",
+            "Name": "SmartScreen for apps and files: enabled",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+            "ValueName": "EnableSmartScreen",
+            "Value": 1,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-MAL-006",
+            "MacroLevel": "L1",
+            "Name": "SmartScreen: warn and prevent bypass",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+            "ValueName": "ShellSmartScreenLevel",
+            "Value": "Block",
+            "Type": "String"
+        },
+        {
+            "ID": "WIN-MAL-007",
+            "MacroLevel": "L3",
+            "Name": "Turn off Windows Script Host",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows Script Host\\Settings",
+            "ValueName": "Enabled",
+            "Value": 0,
+            "Type": "DWord",
+            "Description": "Blocks .vbs and .js scripts, a common malware vector. Breaks logon scripts and tools that use them."
+        },
+        {
+            "ID": "WIN-LOG-001",
+            "MacroLevel": "L1",
+            "Name": "Include the command line in process creation events",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\Audit",
+            "ValueName": "ProcessCreationIncludeCmdLine_Enabled",
+            "Value": 1,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-LOG-002",
+            "MacroLevel": "L1",
+            "Name": "Use the advanced audit policy subcategories",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
+            "ValueName": "SCENoApplyLegacyAuditPolicy",
+            "Value": 1,
+            "Type": "DWord",
+            "Description": "Without it, legacy category settings can override the AuditPolicyRules of this baseline."
+        },
+        {
+            "ID": "WIN-LOG-003",
+            "MacroLevel": "L1",
+            "Name": "PowerShell script block logging",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging",
+            "ValueName": "EnableScriptBlockLogging",
+            "Value": 1,
+            "Type": "DWord"
+        },
+        {
+            "ID": "WIN-LOG-004",
+            "MacroLevel": "L2",
+            "Name": "PowerShell transcription",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\PowerShell\\Transcription",
+            "ValueName": "EnableTranscripting",
+            "Value": 1,
+            "Type": "DWord",
+            "Description": "Records every PowerShell session to text files in the user documents folder."
+        },
+        {
+            "ID": "WIN-LOG-005",
+            "MacroLevel": "L1",
+            "Name": "Security event log size: 192 MB or more",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Security",
+            "ValueName": "MaxSize",
+            "Value": 196608,
+            "Type": "DWord",
+            "Comparison": "AtLeast"
+        },
+        {
+            "ID": "WIN-LOG-006",
+            "MacroLevel": "L1",
+            "Name": "Application event log size: 32 MB or more",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Application",
+            "ValueName": "MaxSize",
+            "Value": 32768,
+            "Type": "DWord",
+            "Comparison": "AtLeast"
+        },
+        {
+            "ID": "WIN-LOG-007",
+            "MacroLevel": "L1",
+            "Name": "System event log size: 32 MB or more",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\System",
+            "ValueName": "MaxSize",
+            "Value": 32768,
+            "Type": "DWord",
+            "Comparison": "AtLeast"
+        },
+        {
+            "ID": "WIN-PRV-001",
+            "MacroLevel": "L2",
+            "Name": "Diagnostic data: required only",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection",
+            "ValueName": "AllowTelemetry",
+            "Value": 1,
+            "Type": "DWord",
+            "Comparison": "AtMost"
+        }
+    ],
+    "AuditPolicyRules": [
+        {
+            "ID": "WIN-AUD-001",
+            "MacroLevel": "L1",
+            "Name": "Audit Credential Validation",
+            "Subcategory": "{0CCE923F-69AE-11D9-BED3-505054503030}",
+            "Setting": "SuccessAndFailure"
+        },
+        {
+            "ID": "WIN-AUD-002",
+            "MacroLevel": "L1",
+            "Name": "Audit Security Group Management",
+            "Subcategory": "{0CCE9237-69AE-11D9-BED3-505054503030}",
+            "Setting": "Success"
+        },
+        {
+            "ID": "WIN-AUD-003",
+            "MacroLevel": "L1",
+            "Name": "Audit User Account Management",
+            "Subcategory": "{0CCE9235-69AE-11D9-BED3-505054503030}",
+            "Setting": "SuccessAndFailure"
+        },
+        {
+            "ID": "WIN-AUD-004",
+            "MacroLevel": "L1",
+            "Name": "Audit Process Creation",
+            "Subcategory": "{0CCE922B-69AE-11D9-BED3-505054503030}",
+            "Setting": "Success"
+        },
+        {
+            "ID": "WIN-AUD-005",
+            "MacroLevel": "L1",
+            "Name": "Audit Account Lockout",
+            "Subcategory": "{0CCE9217-69AE-11D9-BED3-505054503030}",
+            "Setting": "Failure"
+        },
+        {
+            "ID": "WIN-AUD-006",
+            "MacroLevel": "L1",
+            "Name": "Audit Group Membership",
+            "Subcategory": "{0CCE9249-69AE-11D9-BED3-505054503030}",
+            "Setting": "Success"
+        },
+        {
+            "ID": "WIN-AUD-007",
+            "MacroLevel": "L1",
+            "Name": "Audit Logoff",
+            "Subcategory": "{0CCE9216-69AE-11D9-BED3-505054503030}",
+            "Setting": "Success"
+        },
+        {
+            "ID": "WIN-AUD-008",
+            "MacroLevel": "L1",
+            "Name": "Audit Logon",
+            "Subcategory": "{0CCE9215-69AE-11D9-BED3-505054503030}",
+            "Setting": "SuccessAndFailure"
+        },
+        {
+            "ID": "WIN-AUD-009",
+            "MacroLevel": "L1",
+            "Name": "Audit Other Logon/Logoff Events",
+            "Subcategory": "{0CCE921C-69AE-11D9-BED3-505054503030}",
+            "Setting": "SuccessAndFailure"
+        },
+        {
+            "ID": "WIN-AUD-010",
+            "MacroLevel": "L1",
+            "Name": "Audit Special Logon",
+            "Subcategory": "{0CCE921B-69AE-11D9-BED3-505054503030}",
+            "Setting": "Success"
+        },
+        {
+            "ID": "WIN-AUD-011",
+            "MacroLevel": "L1",
+            "Name": "Audit Removable Storage",
+            "Subcategory": "{0CCE9245-69AE-11D9-BED3-505054503030}",
+            "Setting": "SuccessAndFailure"
+        },
+        {
+            "ID": "WIN-AUD-012",
+            "MacroLevel": "L1",
+            "Name": "Audit Audit Policy Change",
+            "Subcategory": "{0CCE922F-69AE-11D9-BED3-505054503030}",
+            "Setting": "Success"
+        },
+        {
+            "ID": "WIN-AUD-013",
+            "MacroLevel": "L1",
+            "Name": "Audit Authentication Policy Change",
+            "Subcategory": "{0CCE9230-69AE-11D9-BED3-505054503030}",
+            "Setting": "Success"
+        },
+        {
+            "ID": "WIN-AUD-014",
+            "MacroLevel": "L1",
+            "Name": "Audit Sensitive Privilege Use",
+            "Subcategory": "{0CCE9228-69AE-11D9-BED3-505054503030}",
+            "Setting": "SuccessAndFailure"
+        },
+        {
+            "ID": "WIN-AUD-015",
+            "MacroLevel": "L1",
+            "Name": "Audit Security State Change",
+            "Subcategory": "{0CCE9210-69AE-11D9-BED3-505054503030}",
+            "Setting": "Success"
+        },
+        {
+            "ID": "WIN-AUD-016",
+            "MacroLevel": "L1",
+            "Name": "Audit Security System Extension",
+            "Subcategory": "{0CCE9211-69AE-11D9-BED3-505054503030}",
+            "Setting": "Success"
+        },
+        {
+            "ID": "WIN-AUD-017",
+            "MacroLevel": "L1",
+            "Name": "Audit System Integrity",
+            "Subcategory": "{0CCE9212-69AE-11D9-BED3-505054503030}",
+            "Setting": "SuccessAndFailure"
+        },
+        {
+            "ID": "WIN-AUD-018",
+            "MacroLevel": "L1",
+            "Name": "Audit PNP Activity",
+            "Subcategory": "{0CCE9248-69AE-11D9-BED3-505054503030}",
+            "Setting": "Success"
+        },
+        {
+            "ID": "WIN-AUD-019",
+            "MacroLevel": "L2",
+            "Name": "Audit Other Object Access Events",
+            "Subcategory": "{0CCE9227-69AE-11D9-BED3-505054503030}",
+            "Setting": "SuccessAndFailure"
+        },
+        {
+            "ID": "WIN-AUD-020",
+            "MacroLevel": "L2",
+            "Name": "Audit Detailed File Share",
+            "Subcategory": "{0CCE9244-69AE-11D9-BED3-505054503030}",
+            "Setting": "Failure"
+        },
+        {
+            "ID": "WIN-AUD-021",
+            "MacroLevel": "L2",
+            "Name": "Audit MPSSVC Rule-Level Policy Change",
+            "Subcategory": "{0CCE9232-69AE-11D9-BED3-505054503030}",
+            "Setting": "SuccessAndFailure"
+        }
+    ],
+    "SecurityPolicyRules": [
+        {
+            "ID": "WIN-ACC-001",
+            "MacroLevel": "L1",
+            "Name": "Password history: 24 passwords or more",
+            "Key": "PasswordHistorySize",
+            "Value": 24,
+            "Comparison": "AtLeast"
+        },
+        {
+            "ID": "WIN-ACC-002",
+            "MacroLevel": "L1",
+            "Name": "Minimum password age: 1 day or more",
+            "Key": "MinimumPasswordAge",
+            "Value": 1,
+            "Comparison": "AtLeast",
+            "Description": "Stops users from cycling through the history to reuse a password."
+        },
+        {
+            "ID": "WIN-ACC-003",
+            "MacroLevel": "L1",
+            "Name": "Minimum password length: 14 characters or more",
+            "Key": "MinimumPasswordLength",
+            "Value": 14,
+            "Comparison": "AtLeast"
+        },
+        {
+            "ID": "WIN-ACC-004",
+            "MacroLevel": "L1",
+            "Name": "Passwords must meet complexity requirements",
+            "Key": "PasswordComplexity",
+            "Value": 1
+        },
+        {
+            "ID": "WIN-ACC-005",
+            "MacroLevel": "L1",
+            "Name": "Do not store passwords with reversible encryption",
+            "Key": "ClearTextPassword",
+            "Value": 0
+        },
+        {
+            "ID": "WIN-ACC-006",
+            "MacroLevel": "L1",
+            "Name": "Account lockout threshold: 1 to 10 failed attempts",
+            "Key": "LockoutBadCount",
+            "Value": 10,
+            "Comparison": "Between",
+            "Min": 1,
+            "Max": 10,
+            "Description": "0 means accounts never lock, which allows unlimited password guessing."
+        },
+        {
+            "ID": "WIN-ACC-007",
+            "MacroLevel": "L1",
+            "Name": "Account lockout duration: 15 minutes or more",
+            "Key": "LockoutDuration",
+            "Value": 15,
+            "Comparison": "AtLeast"
+        },
+        {
+            "ID": "WIN-ACC-008",
+            "MacroLevel": "L1",
+            "Name": "Reset the failed-logon counter after 15 minutes or more",
+            "Key": "ResetLockoutCount",
+            "Value": 15,
+            "Comparison": "AtLeast"
+        },
+        {
+            "ID": "WIN-ACC-009",
+            "MacroLevel": "L1",
+            "Name": "Guest account disabled",
+            "Key": "EnableGuestAccount",
+            "Value": 0
+        },
+        {
+            "ID": "WIN-ACC-010",
+            "MacroLevel": "L1",
+            "Name": "Do not allow anonymous SID/name translation",
+            "Key": "LSAAnonymousNameLookup",
+            "Value": 0
+        },
+        {
+            "ID": "WIN-ACC-011",
+            "MacroLevel": "L2",
+            "Name": "Lock out the built-in Administrator too",
+            "Key": "AllowAdministratorLockout",
+            "Value": 1
+        }
+    ],
+    "FirewallProfileRules": [
+        {
+            "ID": "WIN-FW-001",
+            "MacroLevel": "L1",
+            "Name": "Firewall Domain: Enabled = True",
+            "Profile": "Domain",
+            "Setting": "Enabled",
+            "Value": "True"
+        },
+        {
+            "ID": "WIN-FW-002",
+            "MacroLevel": "L1",
+            "Name": "Firewall Domain: DefaultInboundAction = Block",
+            "Profile": "Domain",
+            "Setting": "DefaultInboundAction",
+            "Value": "Block"
+        },
+        {
+            "ID": "WIN-FW-003",
+            "MacroLevel": "L1",
+            "Name": "Firewall Domain: DefaultOutboundAction = Allow",
+            "Profile": "Domain",
+            "Setting": "DefaultOutboundAction",
+            "Value": "Allow"
+        },
+        {
+            "ID": "WIN-FW-004",
+            "MacroLevel": "L2",
+            "Name": "Firewall Domain: LogBlocked = True",
+            "Profile": "Domain",
+            "Setting": "LogBlocked",
+            "Value": "True"
+        },
+        {
+            "ID": "WIN-FW-005",
+            "MacroLevel": "L2",
+            "Name": "Firewall Domain: LogMaxSizeKilobytes 16384 or more",
+            "Profile": "Domain",
+            "Setting": "LogMaxSizeKilobytes",
+            "Value": 16384,
+            "Comparison": "AtLeast"
+        },
+        {
+            "ID": "WIN-FW-006",
+            "MacroLevel": "L1",
+            "Name": "Firewall Private: Enabled = True",
+            "Profile": "Private",
+            "Setting": "Enabled",
+            "Value": "True"
+        },
+        {
+            "ID": "WIN-FW-007",
+            "MacroLevel": "L1",
+            "Name": "Firewall Private: DefaultInboundAction = Block",
+            "Profile": "Private",
+            "Setting": "DefaultInboundAction",
+            "Value": "Block"
+        },
+        {
+            "ID": "WIN-FW-008",
+            "MacroLevel": "L1",
+            "Name": "Firewall Private: DefaultOutboundAction = Allow",
+            "Profile": "Private",
+            "Setting": "DefaultOutboundAction",
+            "Value": "Allow"
+        },
+        {
+            "ID": "WIN-FW-009",
+            "MacroLevel": "L2",
+            "Name": "Firewall Private: LogBlocked = True",
+            "Profile": "Private",
+            "Setting": "LogBlocked",
+            "Value": "True"
+        },
+        {
+            "ID": "WIN-FW-010",
+            "MacroLevel": "L2",
+            "Name": "Firewall Private: LogMaxSizeKilobytes 16384 or more",
+            "Profile": "Private",
+            "Setting": "LogMaxSizeKilobytes",
+            "Value": 16384,
+            "Comparison": "AtLeast"
+        },
+        {
+            "ID": "WIN-FW-011",
+            "MacroLevel": "L1",
+            "Name": "Firewall Public: Enabled = True",
+            "Profile": "Public",
+            "Setting": "Enabled",
+            "Value": "True"
+        },
+        {
+            "ID": "WIN-FW-012",
+            "MacroLevel": "L1",
+            "Name": "Firewall Public: DefaultInboundAction = Block",
+            "Profile": "Public",
+            "Setting": "DefaultInboundAction",
+            "Value": "Block"
+        },
+        {
+            "ID": "WIN-FW-013",
+            "MacroLevel": "L1",
+            "Name": "Firewall Public: DefaultOutboundAction = Allow",
+            "Profile": "Public",
+            "Setting": "DefaultOutboundAction",
+            "Value": "Allow"
+        },
+        {
+            "ID": "WIN-FW-014",
+            "MacroLevel": "L2",
+            "Name": "Firewall Public: LogBlocked = True",
+            "Profile": "Public",
+            "Setting": "LogBlocked",
+            "Value": "True"
+        },
+        {
+            "ID": "WIN-FW-015",
+            "MacroLevel": "L2",
+            "Name": "Firewall Public: LogMaxSizeKilobytes 16384 or more",
+            "Profile": "Public",
+            "Setting": "LogMaxSizeKilobytes",
+            "Value": 16384,
+            "Comparison": "AtLeast"
+        }
+    ],
+    "ServiceRules": [
+        {
+            "ID": "WIN-SVC-001",
+            "MacroLevel": "L1",
+            "Name": "RemoteRegistry",
+            "State": "Stopped",
+            "StartupType": "Disabled",
+            "Description": "Remote Registry: lets other computers read and change this registry."
+        },
+        {
+            "ID": "WIN-SVC-002",
+            "MacroLevel": "L2",
+            "Name": "SSDPSRV",
+            "State": "Stopped",
+            "StartupType": "Disabled",
+            "Description": "SSDP Discovery: UPnP device discovery on the local network."
+        },
+        {
+            "ID": "WIN-SVC-003",
+            "MacroLevel": "L2",
+            "Name": "upnphost",
+            "State": "Stopped",
+            "StartupType": "Disabled",
+            "Description": "UPnP Device Host: lets this computer act as a UPnP device."
+        },
+        {
+            "ID": "WIN-SVC-004",
+            "MacroLevel": "L2",
+            "Name": "SharedAccess",
+            "State": "Stopped",
+            "StartupType": "Disabled",
+            "Description": "Internet Connection Sharing: turns this computer into a router."
+        },
+        {
+            "ID": "WIN-SVC-005",
+            "MacroLevel": "L3",
+            "Name": "Spooler",
+            "State": "Stopped",
+            "StartupType": "Disabled",
+            "Description": "Print Spooler: only on machines that never print (PrintNightmare attack surface)."
+        },
+        {
+            "ID": "WIN-SVC-006",
+            "MacroLevel": "L3",
+            "Name": "WebClient",
+            "State": "Stopped",
+            "StartupType": "Disabled",
+            "Description": "WebDAV client: used in NTLM relay attacks; breaks WebDAV mapped drives."
+        }
+    ]
+}

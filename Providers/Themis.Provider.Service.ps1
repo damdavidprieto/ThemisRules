@@ -33,10 +33,13 @@ function Invoke-ThemisServiceRule {
 
         if ($null -eq $svc) {
             # Service Missing
-            if ($Rule.Action -eq "Absent") {
+            # A service that is not installed cannot run: rules that only want it absent,
+            # stopped or disabled are met.
+            $wantsRunning = $Rule.State -eq 'Running' -or ($Rule.StartupType -and $Rule.StartupType -ne 'Disabled')
+            if ($Rule.Action -eq "Absent" -or -not $wantsRunning) {
                 $result.Status = "Compliant"
                 $result.IsCompliant = $true
-                $result.Reason = "Service is absent as expected."
+                $result.Reason = "Service is not installed."
                 $result.Actual = "Missing"
                 return $result
             }

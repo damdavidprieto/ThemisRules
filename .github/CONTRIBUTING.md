@@ -25,9 +25,14 @@ system only run on Windows (enforcement tests use Pester's temporary `TestRegist
   example and a description for each parameter (`Tests/QA/Module.Tests.ps1` checks it).
 - **Analyzer:** the code must have no findings with `PSScriptAnalyzerSettings.psd1`. If a rule does not
   apply, suppress it on that function with `SuppressMessageAttribute` and a justification.
+- **Baselines:** rules in `Baselines/` need an ID, a level and, when it is not obvious, a `Description`
+  of why the setting matters. Only add `Default` when the Windows default is documented. The tests
+  audit every baseline on the CI runner (elevated) and check the audit subcategory GUIDs exist.
 - **New rule type:** add a provider `Invoke-Themis<Type>Rule` in `Providers/` that takes `-Rule` and
   `-Mode` and returns Status, IsCompliant, Reason and Actual. Validate every value from the policy
-  before it is used (paths, names, wildcards): policies run with administrator rights. Add the
+  before it is used (paths, names, wildcards, allowed keys): policies run with administrator rights.
+  Keep calls to system tools (auditpol, secedit, cmdlets) in small wrappers in `Core/Themis.Common.ps1`
+  so the tests can mock them. Add the
   section to `Schema/ThemisPolicy.schema.json` and the README.
 - **Encoding:** read and write files with `-Encoding UTF8`, and save source files that contain
   non-ASCII characters as UTF-8 with BOM, or Windows PowerShell 5.1 will misread them.

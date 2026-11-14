@@ -22,6 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   service had failed. Failures are now reported as `Error` or `EnforceFailed`.
 
 ### Added
+- **Windows workstation baseline** (`Baselines/Windows-Workstation.json`): 99 rules in levels L1 (77),
+  L2 (19) and L3 (3), covering User Account Control, credential protection, SMB and name resolution,
+  Remote Desktop and WinRM, malware entry points, logging, advanced audit policy, password and lockout
+  policy, Windows Firewall profiles, services and diagnostic data. Run it with
+  `Invoke-ThemisPolicy -Baseline Windows-Workstation`; `Get-ThemisBaseline` lists the shipped baselines.
+- **New rule types**: `AuditPolicyRules` (advanced audit policy subcategories by GUID, independent of
+  the Windows language), `SecurityPolicyRules` (password, lockout and account settings of the local
+  security policy) and `FirewallProfileRules` (Domain, Private and Public profile settings).
+- **Comparisons**: numeric rules accept `Comparison` = `AtLeast`, `AtMost` or `Between` (with `Min` and
+  `Max`), for settings such as minimum password length or event log size.
+- Registry rules accept `Default`, the value Windows uses when the setting is not present; when it
+  meets the rule, a missing value is compliant instead of reported.
 - `Invoke-ThemisPolicy -Mode Enforce` supports `-WhatIf` and `-Confirm`: declined rules, or all rules with
   `-WhatIf`, are only audited.
 - `New-ThemisPolicy -Force`; without it an existing file is not replaced. It also supports `-WhatIf`.
@@ -47,6 +59,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   publishes that folder. Removed `ThemisRules.nuspec` and `Tools/publish_module.ps1`, which took
   the Gallery API key as a parameter and published the repository root.
 - README describes the providers that exist (Registry, Service, Process).
+- Enforce reads registry, audit policy, security policy and firewall values back after changing them;
+  if Group Policy keeps the old value the rule is `EnforceFailed` instead of `Fixed`.
+- A service that is not installed now meets rules that want it stopped or disabled.
 - `Get-ThemisProviders` is now `Get-ThemisProvider` (singular noun); the old name remains as an alias.
 - Policies are read as UTF-8 on Windows PowerShell 5.1.
 - `New-ThemisPolicy` no longer adds an empty `WMIRules` section, which has no provider and made every

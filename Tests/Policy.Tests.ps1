@@ -105,7 +105,7 @@ Describe 'Get-ThemisProvider' {
         function global:Invoke-ThemisSpoofRule { param($Rule, $Mode) @{ Status = 'Compliant'; IsCompliant = $true } }
         try {
             Import-Module (Join-Path $PSScriptRoot '../ThemisRules.psd1') -Force
-            (Get-ThemisProvider).Type | Should -Be @('Process', 'Registry', 'Service')
+            (Get-ThemisProvider).Type | Should -Be @('AuditPolicy', 'FirewallProfile', 'Process', 'Registry', 'SecurityPolicy', 'Service')
         }
         finally {
             Remove-Item Function:\Invoke-ThemisSpoofRule -ErrorAction SilentlyContinue

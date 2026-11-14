@@ -2,6 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "ThemisRules Policy",
     "type": "object",
+    "additionalProperties": false,
     "properties": {
         "Meta": {
             "type": "object",
@@ -21,6 +22,18 @@
                 },
                 "Description": {
                     "type": "string"
+                },
+                "AppliesTo": {
+                    "type": "string"
+                },
+                "Created": {
+                    "type": "string"
+                },
+                "References": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -42,8 +55,23 @@
                     "Name": {
                         "type": "string"
                     },
-                    "Path": {
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
                         "type": "string"
+                    },
+                    "Path": {
+                        "type": "string",
+                        "description": "Registry key, such as HKLM:\\SOFTWARE\\... Must be a registry path."
                     },
                     "ValueName": {
                         "type": "string"
@@ -52,7 +80,8 @@
                         "type": [
                             "string",
                             "integer",
-                            "number"
+                            "number",
+                            "array"
                         ]
                     },
                     "Type": {
@@ -66,15 +95,30 @@
                             "QWord"
                         ]
                     },
-                    "MacroLevel": {
+                    "Default": {
+                        "type": [
+                            "string",
+                            "integer",
+                            "number"
+                        ],
+                        "description": "Value Windows uses when the registry value is not set. If it meets the rule, a missing value is compliant."
+                    },
+                    "Comparison": {
                         "type": "string",
                         "enum": [
-                            "L1",
-                            "L2",
-                            "L3",
-                            "L4",
-                            "L5"
-                        ]
+                            "Equal",
+                            "AtLeast",
+                            "AtMost",
+                            "Between"
+                        ],
+                        "default": "Equal",
+                        "description": "How the actual value is compared. AtLeast, AtMost and Between need numbers; Between uses Min and Max. Enforce always writes Value."
+                    },
+                    "Min": {
+                        "type": "number"
+                    },
+                    "Max": {
+                        "type": "number"
                     }
                 }
             }
@@ -92,6 +136,20 @@
                         "type": "string"
                     },
                     "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
                         "type": "string"
                     },
                     "State": {
@@ -113,7 +171,8 @@
                         "type": "string",
                         "enum": [
                             "Absent"
-                        ]
+                        ],
+                        "description": "Absent deletes the service in Enforce mode."
                     }
                 }
             }
@@ -124,7 +183,8 @@
                 "type": "object",
                 "required": [
                     "ID",
-                    "Name"
+                    "Name",
+                    "State"
                 ],
                 "properties": {
                     "ID": {
@@ -133,12 +193,227 @@
                     "Name": {
                         "type": "string"
                     },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
                     "State": {
                         "type": "string",
                         "enum": [
                             "Absent",
                             "Present"
                         ]
+                    }
+                }
+            }
+        },
+        "AuditPolicyRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name",
+                    "Subcategory",
+                    "Setting"
+                ],
+                "properties": {
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "Subcategory": {
+                        "type": "string",
+                        "pattern": "^\\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\}$",
+                        "description": "Advanced audit policy subcategory GUID (auditpol /list /subcategory:* /v)."
+                    },
+                    "Setting": {
+                        "type": "string",
+                        "enum": [
+                            "Success",
+                            "Failure",
+                            "SuccessAndFailure",
+                            "NoAuditing"
+                        ]
+                    }
+                }
+            }
+        },
+        "SecurityPolicyRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name",
+                    "Key",
+                    "Value"
+                ],
+                "properties": {
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "Key": {
+                        "type": "string",
+                        "enum": [
+                            "MinimumPasswordAge",
+                            "MaximumPasswordAge",
+                            "MinimumPasswordLength",
+                            "PasswordComplexity",
+                            "PasswordHistorySize",
+                            "LockoutBadCount",
+                            "ResetLockoutCount",
+                            "LockoutDuration",
+                            "AllowAdministratorLockout",
+                            "RequireLogonToChangePassword",
+                            "ForceLogoffWhenHourExpire",
+                            "ClearTextPassword",
+                            "LSAAnonymousNameLookup",
+                            "EnableAdminAccount",
+                            "EnableGuestAccount"
+                        ],
+                        "description": "[System Access] setting of the local security policy."
+                    },
+                    "Value": {
+                        "type": "integer"
+                    },
+                    "Comparison": {
+                        "type": "string",
+                        "enum": [
+                            "Equal",
+                            "AtLeast",
+                            "AtMost",
+                            "Between"
+                        ],
+                        "default": "Equal",
+                        "description": "How the actual value is compared. AtLeast, AtMost and Between need numbers; Between uses Min and Max. Enforce always writes Value."
+                    },
+                    "Min": {
+                        "type": "number"
+                    },
+                    "Max": {
+                        "type": "number"
+                    }
+                }
+            }
+        },
+        "FirewallProfileRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name",
+                    "Profile",
+                    "Setting",
+                    "Value"
+                ],
+                "properties": {
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "Profile": {
+                        "type": "string",
+                        "enum": [
+                            "Domain",
+                            "Private",
+                            "Public"
+                        ]
+                    },
+                    "Setting": {
+                        "type": "string",
+                        "enum": [
+                            "Enabled",
+                            "DefaultInboundAction",
+                            "DefaultOutboundAction",
+                            "NotifyOnListen",
+                            "LogBlocked",
+                            "LogAllowed",
+                            "LogMaxSizeKilobytes"
+                        ]
+                    },
+                    "Value": {
+                        "type": [
+                            "string",
+                            "integer"
+                        ]
+                    },
+                    "Comparison": {
+                        "type": "string",
+                        "enum": [
+                            "Equal",
+                            "AtLeast",
+                            "AtMost",
+                            "Between"
+                        ],
+                        "default": "Equal",
+                        "description": "How the actual value is compared. AtLeast, AtMost and Between need numbers; Between uses Min and Max. Enforce always writes Value."
+                    },
+                    "Min": {
+                        "type": "number"
+                    },
+                    "Max": {
+                        "type": "number"
                     }
                 }
             }

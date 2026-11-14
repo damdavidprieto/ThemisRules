@@ -34,11 +34,12 @@ function Initialize-ThemisProviders {
 function Invoke-ThemisPolicy {
     <#
     .SYNOPSIS
-        Checks a JSON policy against this machine and, in Enforce mode, applies it.
+        Checks a JSON policy or a shipped baseline against this machine and, in Enforce mode, applies it.
 
     .DESCRIPTION
-        Reads the policy and evaluates every rule in its RegistryRules, ServiceRules and
-        ProcessRules sections with the matching provider, then returns one result per rule
+        Reads the policy (a file, or a baseline shipped with the module: see Get-ThemisBaseline)
+        and evaluates every rule with the provider for its section: RegistryRules, ServiceRules,
+        ProcessRules, AuditPolicyRules, SecurityPolicyRules and FirewallProfileRules. It returns one result per rule
         with Timestamp, Policy, PolicyPath, ID, Type, Name, MacroLevel, Status, IsCompliant,
         Reason and Actual. Status is Compliant, Non-Compliant, Fixed, Missing*, EnforceFailed
         or Error.
@@ -52,6 +53,10 @@ function Invoke-ThemisPolicy {
     .PARAMETER PolicyPath
         Path to the policy JSON file.
 
+    .PARAMETER Baseline
+        Name of a baseline shipped with the module, such as Windows-Workstation. Get-ThemisBaseline
+        lists them.
+
     .PARAMETER Mode
         Audit (check only, the default) or Enforce (apply the policy).
 
@@ -63,9 +68,15 @@ function Invoke-ThemisPolicy {
         Accepted for compatibility with earlier versions; rules always run one after another.
 
     .EXAMPLE
+        Invoke-ThemisPolicy -Baseline Windows-Workstation -MacroLevel L1
+
+        Audits this machine against the L1 rules of the shipped workstation baseline. Run it
+        elevated: audit and security policy rules need administrator rights.
+
+    .EXAMPLE
         Invoke-ThemisPolicy -PolicyPath .\baseline.json
 
-        Audits every rule and returns the results.
+        Audits every rule of your own policy file and returns the results.
 
     .EXAMPLE
         Invoke-ThemisPolicy -PolicyPath .\baseline.json -Mode Enforce -MacroLevel L1 -WhatIf
@@ -77,11 +88,21 @@ function Invoke-ThemisPolicy {
 
         Saves the rules that do not comply as an HTML report.
     #>
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject[]])]
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'Path')]
         [string]$PolicyPath,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'Baseline')]
+        [ArgumentCompleter({
+                param($commandName, $parameterName, $wordToComplete)
+                $null = $commandName, $parameterName
+                Get-ChildItem -Path (Join-Path (Split-Path (Get-Module ThemisRules).Path) 'Baselines') -Filter '*.json' |
+                    Where-Object BaseName -Like "$wordToComplete*" | ForEach-Object BaseName
+            })]
+        [ValidatePattern('^[A-Za-z0-9._-]+$')]
+        [string]$Baseline,
 
         [ValidateSet('Audit', 'Enforce')]
         [string]$Mode = 'Audit',
@@ -94,6 +115,16 @@ function Invoke-ThemisPolicy {
 
     # 1. Initialize
     if ($script:ProviderCache.Count -eq 0) { Initialize-ThemisProviders }
+    $script:ThemisRunCache = @{}
+
+    if ($PSCmdlet.ParameterSetName -eq 'Baseline') {
+        $PolicyPath = Join-Path (Join-Path (Split-Path $PSScriptRoot -Parent) 'Baselines') "$Baseline.json"
+        if (-not (Test-Path -LiteralPath $PolicyPath -PathType Leaf)) {
+            $available = (Get-ThemisBaseline).Name -join ', '
+            Write-Error "[Themis] Baseline '$Baseline' not found. Available baselines: $available"
+            return $null
+        }
+    }
 
     if (-not (Test-Path -LiteralPath $PolicyPath -PathType Leaf)) {
         Write-Error "[Themis] Policy not found: $PolicyPath"

@@ -54,6 +54,13 @@ function Invoke-ThemisRegistryRule {
 
     try {
         if (-not (Test-Path -LiteralPath $Rule.Path)) {
+            if ($null -ne $Rule.Default -and (Test-ThemisValue -Actual $Rule.Default -Rule $Rule).Match) {
+                $result.Status = "Compliant"
+                $result.IsCompliant = $true
+                $result.Reason = "Not set; the Windows default ($($Rule.Default)) meets the rule."
+                $result.Actual = "(default) $($Rule.Default)"
+                return $result
+            }
             $result.Status = "MissingKey"
             $result.Reason = "Key path not found: $($Rule.Path)"
 
@@ -67,7 +74,15 @@ function Invoke-ThemisRegistryRule {
 
         $reg = Get-ItemProperty -LiteralPath $Rule.Path -Name $Rule.ValueName -ErrorAction SilentlyContinue
 
-        if ($null -eq $reg) {
+        if ($null -eq $reg -and $null -ne $Rule.Default -and (Test-ThemisValue -Actual $Rule.Default -Rule $Rule).Match) {
+            # Not set, but the value Windows uses when it is missing already meets the rule.
+            $result.Status = "Compliant"
+            $result.IsCompliant = $true
+            $result.Reason = "Not set; the Windows default ($($Rule.Default)) meets the rule."
+            $result.Actual = "(default) $($Rule.Default)"
+            return $result
+        }
+        elseif ($null -eq $reg) {
             $result.Status = "MissingValue"
             $result.Reason = "Value '$($Rule.ValueName)' not found."
         }
@@ -75,29 +90,23 @@ function Invoke-ThemisRegistryRule {
             $currentValue = $reg.$($Rule.ValueName)
             $result.Actual = $currentValue
 
-            $match = $false
-            # Enhanced Type handling
-            switch ($Rule.Type) {
-                "DWord" { if ([long]$currentValue -eq [long]$Rule.Value) { $match = $true } }
-                "QWord" { if ([long]$currentValue -eq [long]$Rule.Value) { $match = $true } }
-                "String" { if ("$currentValue" -eq "$($Rule.Value)") { $match = $true } }
-                "MultiString" {
-                    # Compare arrays
-                    if ($null -ne $currentValue -and ($currentValue | Sort-Object) -join ',' -eq ($Rule.Value | Sort-Object) -join ',') {
-                        $match = $true
-                    }
-                }
-                Default { if ("$currentValue" -eq "$($Rule.Value)") { $match = $true } } # Fallback
+            if ($Rule.Type -eq 'MultiString') {
+                $expected = (@($Rule.Value) | Sort-Object) -join ','
+                $check = @{ Match = ($null -ne $currentValue -and ((@($currentValue) | Sort-Object) -join ',') -eq $expected); Expected = $expected }
+            }
+            else {
+                # Equal by default; AtLeast, AtMost and Between for numeric values.
+                $check = Test-ThemisValue -Actual $currentValue -Rule $Rule
             }
 
-            if ($match) {
+            if ($check.Match) {
                 $result.Status = "Compliant"
                 $result.IsCompliant = $true
-                $result.Reason = "Value matches expected configuration."
+                $result.Reason = "Value is $currentValue (required: $($check.Expected))."
             }
             else {
                 $result.Status = "Non-Compliant"
-                $result.Reason = "Expected '$($Rule.Value)' but found '$currentValue'."
+                $result.Reason = "Expected $($check.Expected) but found '$currentValue'."
             }
         }
 
@@ -108,7 +117,8 @@ function Invoke-ThemisRegistryRule {
                 Set-ItemProperty -LiteralPath $Rule.Path -Name $Rule.ValueName -Value $Rule.Value -Type $ruleType -Force -ErrorAction Stop
                 $result.Status = "Fixed"
                 $result.IsCompliant = $true
-                $result.Reason = "Remediated by Registry Provider."
+                $result.Reason = "Value set to $($Rule.Value)."
+                $result.Actual = (Get-ItemProperty -LiteralPath $Rule.Path -Name $Rule.ValueName -ErrorAction SilentlyContinue).$($Rule.ValueName)
             }
             catch {
                 $result.Status = "EnforceFailed"
