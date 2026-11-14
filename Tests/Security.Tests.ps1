@@ -5,8 +5,8 @@ BeforeAll {
 Describe 'CSV report and formula injection' {
     It 'writes values that start with a formula character as text, not as formulas' {
         $results = @(
-            [PSCustomObject]@{ ID = 'A'; Type = 'Registry'; Name = '=HYPERLINK("http://x","click")'; MacroLevel = 'L1'; Status = 'Non-Compliant'; IsCompliant = $false; Reason = '+1+1'; Actual = '-2' }
-            [PSCustomObject]@{ ID = 'B'; Type = 'Service'; Name = '@SUM(A1)'; MacroLevel = 'L2'; Status = 'Compliant'; IsCompliant = $true; Reason = "`tTAB"; Actual = 'Running' }
+            [PSCustomObject]@{ Policy = 'P'; ID = 'A'; Type = 'Registry'; Name = '=HYPERLINK("http://x","click")'; MacroLevel = 'L1'; Status = 'Non-Compliant'; IsCompliant = $false; Reason = '+1+1'; Actual = '-2' }
+            [PSCustomObject]@{ Policy = 'P'; ID = 'B'; Type = 'Service'; Name = '@SUM(A1)'; MacroLevel = 'L2'; Status = 'Compliant'; IsCompliant = $true; Reason = "`tTAB"; Actual = 'Running' }
         )
         $file = $results | Export-ThemisReport -Path (Join-Path $TestDrive 'injection.csv')
         $rows = @(Import-Csv -LiteralPath $file.FullName)
@@ -19,7 +19,7 @@ Describe 'CSV report and formula injection' {
     }
 
     It 'leaves ordinary values unchanged' {
-        $results = @([PSCustomObject]@{ ID = 'C'; Type = 'Registry'; Name = 'Plain name'; MacroLevel = 'L1'; Status = 'Compliant'; IsCompliant = $true; Reason = 'ok'; Actual = '1' })
+        $results = @([PSCustomObject]@{ Policy = 'P'; ID = 'C'; Type = 'Registry'; Name = 'Plain name'; MacroLevel = 'L1'; Status = 'Compliant'; IsCompliant = $true; Reason = 'ok'; Actual = '1' })
         $file = $results | Export-ThemisReport -Path (Join-Path $TestDrive 'plain.csv')
         (Import-Csv -LiteralPath $file.FullName).Name | Should -BeExactly 'Plain name'
     }
