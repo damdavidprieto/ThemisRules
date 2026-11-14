@@ -30,6 +30,10 @@ Describe 'ThemisRules manifest' {
     }
 
     It 'registers the Registry, Service and Process providers' {
-        (Get-ThemisProviders).Type | Should -Be @('Process', 'Registry', 'Service')
+        (Get-ThemisProvider).Type | Should -Be @('Process', 'Registry', 'Service')
+    }
+
+    It 'keeps the old name Get-ThemisProviders as an alias' {
+        (Get-Command Get-ThemisProviders).ResolvedCommandName | Should -Be 'Get-ThemisProvider'
     }
 }

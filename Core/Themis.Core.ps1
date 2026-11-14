@@ -1,19 +1,22 @@
-<#
-.SYNOPSIS
-    ThemisRules policy engine core.
-    Compliance auditing and enforcement for Windows, driven by JSON policies.
-
-.DESCRIPTION
-    Discovers the rule providers loaded from Providers/ and dispatches rules to them.
-
-.AUTHOR
-    David Prieto
-#>
+# ThemisRules policy engine core.
+# Compliance auditing and enforcement for Windows, driven by JSON policies.
+#
+# Discovers the rule providers loaded from Providers/ and dispatches rules to them.
+#
+# David Prieto
 
 # Provider registry: rule type (e.g. "Registry") -> command that evaluates it.
 $script:ProviderCache = @{}
 
 function Initialize-ThemisProviders {
+    <#
+    .SYNOPSIS
+        Registers the Invoke-Themis<Type>Rule provider functions of this module.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Private function; registers several providers.')]
+    [CmdletBinding()]
+    param()
+
     # Providers are the Invoke-Themis<Type>Rule functions dot-sourced from Providers/*.ps1.
     # Only functions defined by this module count: a function with a matching name defined
     # elsewhere in the session must not be able to register itself as a provider.
@@ -31,53 +34,77 @@ function Initialize-ThemisProviders {
 function Invoke-ThemisPolicy {
     <#
     .SYNOPSIS
-        Executes a security policy with optional level-based filtering.
-    
+        Checks a JSON policy against this machine and, in Enforce mode, applies it.
+
+    .DESCRIPTION
+        Reads the policy and evaluates every rule in its RegistryRules, ServiceRules and
+        ProcessRules sections with the matching provider, then returns one result per rule
+        with Timestamp, Policy, PolicyPath, ID, Type, Name, MacroLevel, Status, IsCompliant,
+        Reason and Actual. Status is Compliant, Non-Compliant, Fixed, Missing*, EnforceFailed
+        or Error.
+        Audit mode (the default) only reads. Enforce mode changes the system to match the
+        policy: it writes registry values, starts, stops, reconfigures or deletes services and
+        stops processes. Enforce supports -WhatIf and -Confirm: rules you decline, or all rules
+        with -WhatIf, are only audited. Run Enforce elevated for HKLM keys and services.
+        A policy runs with your permissions: only use policies from a source you trust.
+        Sections without a provider are skipped with a warning.
+
     .PARAMETER PolicyPath
         Path to the policy JSON file.
-    
+
     .PARAMETER Mode
-        Execution mode: Audit (check only) or Enforce (apply changes).
-    
+        Audit (check only, the default) or Enforce (apply the policy).
+
     .PARAMETER MacroLevel
-        Filter rules by hardening level (L1-L5). Only rules <= specified level are evaluated.
-        Example: -MacroLevel "L1" evaluates only L1 rules.
-    
+        Evaluate only rules up to this hardening level, L1 to L5. Rules without a level are
+        always evaluated.
+
     .PARAMETER Parallel
-        Reserved. Rules always run sequentially; the switch is accepted for compatibility.
-    
+        Accepted for compatibility with earlier versions; rules always run one after another.
+
     .EXAMPLE
-        Invoke-ThemisPolicy -PolicyPath ".\system_security.json" -Mode Audit -MacroLevel "L1"
+        Invoke-ThemisPolicy -PolicyPath .\baseline.json
+
+        Audits every rule and returns the results.
+
+    .EXAMPLE
+        Invoke-ThemisPolicy -PolicyPath .\baseline.json -Mode Enforce -MacroLevel L1 -WhatIf
+
+        Shows which L1 rules would be enforced, and audits them without changing anything.
+
+    .EXAMPLE
+        Invoke-ThemisPolicy -PolicyPath .\baseline.json | Where-Object { -not $_.IsCompliant } | Export-ThemisReport -Path .\gaps.html
+
+        Saves the rules that do not comply as an HTML report.
     #>
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    [OutputType([pscustomobject[]])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$PolicyPath,
 
-        [Parameter(Mandatory = $false)]
-        [ValidateSet("Audit", "Enforce")]
-        [string]$Mode = "Audit",
+        [ValidateSet('Audit', 'Enforce')]
+        [string]$Mode = 'Audit',
 
-        [Parameter(Mandatory = $false)]
         [ValidatePattern('^L[1-5]$')]
         [string]$MacroLevel = $null,
 
-        [Parameter(Mandatory = $false)]
-        [switch]$Parallel = $false
+        [switch]$Parallel
     )
 
     # 1. Initialize
     if ($script:ProviderCache.Count -eq 0) { Initialize-ThemisProviders }
 
-    if (-not (Test-Path $PolicyPath)) {
+    if (-not (Test-Path -LiteralPath $PolicyPath -PathType Leaf)) {
         Write-Error "[Themis] Policy not found: $PolicyPath"
         return $null
     }
 
-    $policy = Get-Content $PolicyPath -Raw | ConvertFrom-Json
+    # -Encoding UTF8: Windows PowerShell 5.1 reads files without a BOM as ANSI otherwise.
+    $policy = Get-Content -LiteralPath $PolicyPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $policyName = if ($policy.Meta.Name) { $policy.Meta.Name } else { [System.IO.Path]::GetFileNameWithoutExtension($PolicyPath) }
     $policyVersion = if ($policy.Meta.Version) { $policy.Meta.Version } else { "1.0.0" }
-    
+
     Write-Verbose "Loaded Policy: $policyName v$policyVersion"
     if ($MacroLevel) {
         Write-Verbose "Filtering by MacroLevel: $MacroLevel"
@@ -86,12 +113,12 @@ function Invoke-ThemisPolicy {
     # 2. Flatten Rules with MacroLevel Filtering
     $allRules = @()
     $targetLevel = if ($MacroLevel) { [int]($MacroLevel -replace 'L', '') } else { 999 }
-    
+
     # Iterate known provider types in the JSON
     foreach ($prop in $policy.PSObject.Properties) {
         if ($prop.Name -match "(.+)Rules") {
             $type = $matches[1] # "Registry" from "RegistryRules"
-            
+
             if (-not $script:ProviderCache.ContainsKey($type)) {
                 Write-Warning "[Themis] No provider for '$($prop.Name)'; its rules are skipped."
             }
@@ -102,7 +129,7 @@ function Invoke-ThemisPolicy {
                     if ($rule.MacroLevel -and $rule.MacroLevel -match '^L([1-5])$') {
                         $ruleLevel = [int]$matches[1]
                     }
-                    
+
                     # Only include rules <= target level
                     if ($ruleLevel -le $targetLevel) {
                         # Inject Type and Metadata into Rule Object
@@ -121,7 +148,7 @@ function Invoke-ThemisPolicy {
 
     Write-Verbose "Total rules after filtering: $($allRules.Count)"
     $results = @()
-    
+
     # 3. Execution
     if ($Parallel) {
         Write-Verbose "-Parallel is ignored: rules run sequentially."
@@ -130,13 +157,19 @@ function Invoke-ThemisPolicy {
     foreach ($rule in $allRules) {
         $type = $rule._ProviderType
         $cmdlet = $script:ProviderCache[$type]
-        
+
         Write-Verbose "Processing Rule: $($rule.ID) ($type)"
-        
-        # Dispatch
+
+        # Enforce changes the system: each rule asks ShouldProcess, and is only audited when
+        # declined or when -WhatIf is used.
+        $ruleMode = $Mode
+        if ($Mode -eq 'Enforce' -and -not $PSCmdlet.ShouldProcess("$type rule $($rule.ID) ($($rule.Name))", 'Enforce')) {
+            $ruleMode = 'Audit'
+        }
+
         try {
-            $res = & $cmdlet -Rule $rule -Mode $Mode
-            
+            $res = & $cmdlet -Rule $rule -Mode $ruleMode
+
             # Enrich Result with Enhanced Metadata
             $obj = [PSCustomObject]@{
                 Timestamp   = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
@@ -161,4 +194,3 @@ function Invoke-ThemisPolicy {
 
     return $results
 }
-

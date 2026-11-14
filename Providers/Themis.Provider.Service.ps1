@@ -1,12 +1,10 @@
-<#
-.SYNOPSIS
-    Themis Service Provider
-.DESCRIPTION
-    Handles 'Service' type rules.
-    Actions supported: Check (State), Ensure (Running/Stopped), Startup (Auto/Manual/Disabled).
-#>
+# Themis Service Provider
+# Handles 'Service' type rules.
+# Actions supported: Check (State), Ensure (Running/Stopped), Startup (Auto/Manual/Disabled).
 
 function Invoke-ThemisServiceRule {
+    [CmdletBinding()]
+    [OutputType([System.Collections.Specialized.OrderedDictionary])]
     param(
         [Parameter(Mandatory = $true)]
         [PSCustomObject]$Rule,
@@ -52,15 +50,13 @@ function Invoke-ThemisServiceRule {
         }
 
         $result.Actual = "$($svc.Status) ($($svc.StartType))"
-        $compliant = $true
         $reasons = @()
 
         # Check Startup Type
         if ($Rule.StartupType) {
             if ($svc.StartType -ne $Rule.StartupType) {
-                $compliant = $false
                 $reasons += "Startup mismatch (Expected: $($Rule.StartupType), Actual: $($svc.StartType))."
-                
+
                 if ($Mode -eq "Enforce") {
                     Set-Service -Name $svc.Name -StartupType $Rule.StartupType -ErrorAction Stop
                     $reasons += "[Fixed] Startup type set to $($Rule.StartupType)."
@@ -71,9 +67,8 @@ function Invoke-ThemisServiceRule {
         # Check State
         if ($Rule.State) {
             if ($svc.Status -ne $Rule.State) {
-                $compliant = $false
                 $reasons += "State mismatch (Expected: $($Rule.State), Actual: $($svc.Status))."
-                
+
                 if ($Mode -eq "Enforce") {
                     if ($Rule.State -eq "Running") { Start-Service -Name $svc.Name -ErrorAction Stop }
                     elseif ($Rule.State -eq "Stopped") { Stop-Service -Name $svc.Name -Force -ErrorAction Stop }
@@ -82,10 +77,9 @@ function Invoke-ThemisServiceRule {
                 }
             }
         }
-        
+
         # Check Action: Absent (Removal)
         if ($Rule.Action -eq "Absent") {
-            $compliant = $false
             $reasons += "Service exists but should be absent."
             if ($Mode -eq "Enforce") {
                 # Requires external tool usually, sc.exe
@@ -116,7 +110,7 @@ function Invoke-ThemisServiceRule {
             $result.Status = "Compliant"
             $result.Reason = "Service matches configuration."
         }
-        
+
         # Refresh Actual if changed
         $svc.Refresh()
         $result.Actual = "$($svc.Status) ($($svc.StartType))"
@@ -129,4 +123,3 @@ function Invoke-ThemisServiceRule {
 
     return $result
 }
-

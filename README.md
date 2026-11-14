@@ -17,7 +17,8 @@ processes). ThemisRules checks each rule, reports what complies and what does no
 - **Hardening levels (L1-L5)**: `-MacroLevel L2` evaluates only rules up to L2.
 - **Results with metadata**: policy name and path, timestamp, status, reason and actual value per rule.
 - **Reports**: `Export-ThemisReport` writes JSON, CSV or HTML with a compliance score.
-- **Windows PowerShell 5.1 and PowerShell 7**, no dependencies.
+- **Safe by default**: `Enforce` supports `-WhatIf` and `-Confirm`, and every rule is checked before it runs.
+- **Windows PowerShell 5.1 and PowerShell 7** on Windows, no dependencies. Every command has full help: `Get-Help Invoke-ThemisPolicy -Full`.
 
 ## Installation
 
@@ -39,9 +40,12 @@ Invoke-ThemisPolicy -PolicyPath .\baseline.json -Mode Audit
 # Audit only L1 rules and save an HTML report
 Invoke-ThemisPolicy -PolicyPath .\baseline.json -MacroLevel L1 | Export-ThemisReport -Path .\report.html
 
-# Apply the L1 rules (run elevated for HKLM and services)
+# Preview what Enforce would change, then apply the L1 rules (run elevated for HKLM and services)
+Invoke-ThemisPolicy -PolicyPath .\baseline.json -Mode Enforce -MacroLevel L1 -WhatIf
 Invoke-ThemisPolicy -PolicyPath .\baseline.json -Mode Enforce -MacroLevel L1
 ```
+
+With `-WhatIf` every rule is only audited; with `-Confirm` you approve each change.
 
 `Enforce` changes the system: registry values are written, services are started, stopped,
 reconfigured or **deleted** (`"Action": "Absent"`), and processes are stopped. Run `Audit` first.
@@ -85,7 +89,9 @@ delete every service.
 
 Every rule takes `ID`, `Name` and optionally `MacroLevel` (`L1`-`L5`) and `Description`.
 The full schema is in [`Schema/ThemisPolicy.schema.json`](Schema/ThemisPolicy.schema.json) and there are
-sample policies in [`Examples/`](Examples/). `Get-ThemisProviders` lists the rule sections the installed version supports.
+sample policies in [`Examples/`](Examples/) (`Workstation_Baseline.json`, `Gaming_Optimization.json`), which the
+tests audit on every CI run. `Get-ThemisProvider` lists the rule sections the installed version supports;
+other sections are skipped with a warning.
 
 ## Result format
 
@@ -125,9 +131,15 @@ Rules without `MacroLevel` are always evaluated.
 ./build.ps1                        # analysis + tests + build into output/ThemisRules
 ```
 
-CI runs the tests on PowerShell 7 and Windows PowerShell 5.1 and installs the built package with
-`Install-Module`. Releases are published from `output/ThemisRules` by the `Publish` workflow when a
-`v*` tag is pushed. See the [changelog](CHANGELOG.md).
+The repository follows the layout of the [Sampler](https://github.com/gaelcolas/Sampler) module
+template: the package is built from the runtime files only, and the QA tests check that every
+command has complete help, that the code passes PSScriptAnalyzer with
+[`PSScriptAnalyzerSettings.psd1`](PSScriptAnalyzerSettings.psd1) (including Windows PowerShell 5.1
+compatibility) and that the changelog is up to date. CI runs on Windows PowerShell 5.1 and
+PowerShell 7 and installs the built package with `Install-Module`. Pushing a `v*` tag publishes the
+version to the PowerShell Gallery.
+
+See [CONTRIBUTING](.github/CONTRIBUTING.md), [SECURITY](SECURITY.md) and the [changelog](CHANGELOG.md).
 
 ## License
 

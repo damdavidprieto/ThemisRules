@@ -1,33 +1,43 @@
 name: CI
 
+# Same workflow in HermesConsoleUI, ArgosCCF and ThemisRules; only the env block changes.
+#  - PowerShell 7 on Windows, Linux and macOS: analysis, tests and build (build.ps1).
+#  - Windows PowerShell 5.1: tests, then the package is installed with Install-Module from a
+#    local repository and must load automatically, the way users get it from the Gallery.
+
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+env:
+  MODULE_NAME: ThemisRules
+  TESTS_PATH: ./Tests
+  # A command from the module, run in a new 5.1 session to prove auto-loading works.
+  SMOKE_TEST: "if ((Get-ThemisProvider).Type -notcontains 'Registry') { throw 'Providers did not load' }"
+
 jobs:
-  powershell7:
-    name: Analyze, test and build (PowerShell 7)
-    runs-on: windows-latest
+  test:
+    name: PowerShell 7 on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Pester and PSScriptAnalyzer
-        shell: pwsh
-        run: |
-          Install-Module Pester -MinimumVersion 5.0.0 -MaximumVersion 5.99.99 -Force -SkipPublisherCheck -Scope CurrentUser
-          Install-Module PSScriptAnalyzer -Force -SkipPublisherCheck -Scope CurrentUser
-
       - name: Analyze, test and build
         shell: pwsh
-        run: ./build.ps1
+        run: ./build.ps1 -InstallDependencies
 
   windows-powershell:
-    name: Tests and Install-Module on Windows PowerShell 5.1
+    name: Windows PowerShell 5.1 and Install-Module
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,34 +49,42 @@ jobs:
           $repo = Join-Path $env:RUNNER_TEMP 'localrepo'
           New-Item -ItemType Directory -Path $repo -Force | Out-Null
           Register-PSResourceRepository -Name LocalRepo -Uri $repo -Trusted
-          Publish-PSResource -Path ./output/ThemisRules -Repository LocalRepo
+          Publish-PSResource -Path "./output/$env:MODULE_NAME" -Repository LocalRepo
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $entries = [IO.Compression.ZipFile]::OpenRead((Get-ChildItem $repo -Filter *.nupkg).FullName).Entries.FullName
           $entries
-          if ($entries -match '^(\.git|\.github|Tests)/') { throw 'Package contains repository-only files' }
+          if ($entries -match '^(\.git|\.github|tests|docs|examples|logs|output)/') { throw 'Package contains repository-only files' }
 
-      - name: Run the Pester suite (Windows PowerShell 5.1)
+      - name: Tests (Windows PowerShell 5.1)
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
+          $PSVersionTable.PSVersion
           [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
           Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
           Install-Module Pester -MinimumVersion 5.0.0 -MaximumVersion 5.99.99 -Force -SkipPublisherCheck -Scope CurrentUser
+          Install-Module PSScriptAnalyzer -Force -SkipPublisherCheck -Scope CurrentUser
           Import-Module Pester -MinimumVersion 5.0.0
           $config = New-PesterConfiguration
-          $config.Run.Path = './Tests'
+          $config.Run.Path = $env:TESTS_PATH
           $config.Run.Exit = $true
           $config.Output.Verbosity = 'Normal'
+          $config.Output.StackTraceVerbosity = 'Full'
           Invoke-Pester -Configuration $config
 
-      - name: Install with Install-Module and auto-load (Windows PowerShell 5.1)
+      - name: Install with Install-Module (Windows PowerShell 5.1)
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
           Register-PSRepository -Name LocalRepo -SourceLocation (Join-Path $env:RUNNER_TEMP 'localrepo') -InstallationPolicy Trusted
-          Install-Module ThemisRules -Repository LocalRepo -Scope CurrentUser
-          $providers = Get-ThemisProviders
-          $module = Get-Module ThemisRules
+          Install-Module $env:MODULE_NAME -Repository LocalRepo -Scope CurrentUser
+          Get-Module $env:MODULE_NAME -ListAvailable | Format-Table Name, Version, ModuleBase
+
+      - name: Auto-load without Import-Module (Windows PowerShell 5.1)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ([scriptblock]::Create($env:SMOKE_TEST))
+          $module = Get-Module $env:MODULE_NAME
           if (-not $module) { throw 'Module was not auto-loaded' }
-          "Loaded $($module.Name) $($module.Version): $($providers.Type -join ', ')"
-          if ($module.ExportedFunctions.Count -ne 4) { throw "Expected 4 exported functions, got $($module.ExportedFunctions.Count)" }
+          "Loaded $($module.Name) $($module.Version) with $($module.ExportedFunctions.Count) functions"

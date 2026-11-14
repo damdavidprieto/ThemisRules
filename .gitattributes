@@ -1,0 +1,10 @@
+# Text files are stored and checked out with CRLF, as in the Sampler module template,
+# so Windows PowerShell 5.1 and Windows editors see the same bytes as CI.
+* text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.ico binary
+*.zip binary
+*.nupkg binary

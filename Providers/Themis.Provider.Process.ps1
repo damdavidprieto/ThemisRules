@@ -1,12 +1,10 @@
-<#
-.SYNOPSIS
-    Themis Process Provider
-.DESCRIPTION
-    Handles 'Process' type rules.
-    Audits if a process is running. Enforce = Stop-Process.
-#>
+# Themis Process Provider
+# Handles 'Process' type rules.
+# Audits if a process is running. Enforce = Stop-Process.
 
 function Invoke-ThemisProcessRule {
+    [CmdletBinding()]
+    [OutputType([System.Collections.Specialized.OrderedDictionary])]
     param(
         [Parameter(Mandatory = $true)]
         [PSCustomObject]$Rule,
@@ -81,4 +79,3 @@ function Invoke-ThemisProcessRule {
 
     return $result
 }
-

@@ -1,0 +1,55 @@
+{
+    "Meta": {
+        "Name": "Workstation baseline",
+        "Version": "2.1.0",
+        "Author": "ThemisRules",
+        "Description": "Example baseline. Audit it first; Enforce changes registry values and service settings and must run elevated."
+    },
+    "RegistryRules": [
+        {
+            "ID": "REG-001",
+            "Name": "UAC: prompt administrators for consent on the secure desktop",
+            "MacroLevel": "L1",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+            "ValueName": "ConsentPromptBehaviorAdmin",
+            "Value": 2,
+            "Type": "DWord"
+        },
+        {
+            "ID": "REG-002",
+            "Name": "Disable background game recording (Game DVR)",
+            "MacroLevel": "L2",
+            "Path": "HKCU:\\System\\GameConfigStore",
+            "ValueName": "GameDVR_Enabled",
+            "Value": 0,
+            "Type": "DWord"
+        }
+    ],
+    "ServiceRules": [
+        {
+            "ID": "SVC-001",
+            "Name": "RemoteRegistry",
+            "MacroLevel": "L1",
+            "State": "Stopped",
+            "StartupType": "Disabled",
+            "Description": "Remote Registry stopped and disabled"
+        },
+        {
+            "ID": "SVC-002",
+            "Name": "DiagTrack",
+            "MacroLevel": "L3",
+            "State": "Stopped",
+            "StartupType": "Disabled",
+            "Description": "Connected User Experiences and Telemetry stopped and disabled (not deleted)"
+        }
+    ],
+    "ProcessRules": [
+        {
+            "ID": "PROC-001",
+            "Name": "notepad",
+            "MacroLevel": "L3",
+            "State": "Absent",
+            "Description": "Example: Enforce stops every notepad process"
+        }
+    ]
+}

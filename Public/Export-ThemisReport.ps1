@@ -4,7 +4,9 @@ function Export-ThemisReport {
         Saves Invoke-ThemisPolicy results as a JSON, CSV or HTML report.
     .DESCRIPTION
         The format comes from -Format or, if omitted, from the file extension (.json, .csv,
-        .html/.htm). JSON and HTML reports include a summary with the compliance score.
+        .html/.htm). JSON and HTML reports include a summary with the number of rules, how
+        many comply and the compliance score; the HTML report encodes every value, so data
+        from the system cannot inject markup. Returns the report file.
     .PARAMETER InputObject
         Results from Invoke-ThemisPolicy (accepts pipeline input).
     .PARAMETER Path
@@ -13,8 +15,17 @@ function Export-ThemisReport {
         Json, Csv or Html.
     .EXAMPLE
         Invoke-ThemisPolicy -PolicyPath .\baseline.json | Export-ThemisReport -Path .\report.html
+
+        Audits the policy and saves an HTML report.
+
+    .EXAMPLE
+        $results = Invoke-ThemisPolicy -PolicyPath .\baseline.json -MacroLevel L1
+        Export-ThemisReport -InputObject $results -Path .\l1.csv
+
+        Saves the L1 results as CSV, one row per rule.
     #>
     [CmdletBinding()]
+    [OutputType([System.IO.FileInfo])]
     param(
         [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
         [PSCustomObject[]]$InputObject,
@@ -27,7 +38,7 @@ function Export-ThemisReport {
     )
 
     begin {
-        $results = New-Object System.Collections.Generic.List[object]
+        $results = [System.Collections.Generic.List[object]]::new()
     }
 
     process {

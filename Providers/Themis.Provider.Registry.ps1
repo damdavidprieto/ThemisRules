@@ -1,11 +1,9 @@
-<#
-.SYNOPSIS
-    Themis Registry Provider
-.DESCRIPTION
-    Handles 'Registry' type rules for Themis Engine.
-#>
+# Themis Registry Provider
+# Handles 'Registry' type rules for Themis Engine.
 
 function Test-ThemisRegistryPath {
+    [CmdletBinding()]
+    [OutputType([bool])]
     # True when Path resolves to the Registry provider (HKLM:, HKCU:, Registry::..., or any
     # PSDrive backed by it). File system, environment and other providers are rejected.
     param([string]$Path)
@@ -23,6 +21,9 @@ function Test-ThemisRegistryPath {
 }
 
 function Invoke-ThemisRegistryRule {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseCompatibleCommands', '', Justification = 'Set-ItemProperty -Type is a dynamic parameter of the Registry provider; the compatibility profiles only list static parameters.')]
+    [CmdletBinding()]
+    [OutputType([System.Collections.Specialized.OrderedDictionary])]
     param(
         [Parameter(Mandatory = $true)]
         [PSCustomObject]$Rule,
@@ -65,7 +66,7 @@ function Invoke-ThemisRegistryRule {
         }
 
         $reg = Get-ItemProperty -LiteralPath $Rule.Path -Name $Rule.ValueName -ErrorAction SilentlyContinue
-        
+
         if ($null -eq $reg) {
             $result.Status = "MissingValue"
             $result.Reason = "Value '$($Rule.ValueName)' not found."
@@ -80,11 +81,11 @@ function Invoke-ThemisRegistryRule {
                 "DWord" { if ([long]$currentValue -eq [long]$Rule.Value) { $match = $true } }
                 "QWord" { if ([long]$currentValue -eq [long]$Rule.Value) { $match = $true } }
                 "String" { if ("$currentValue" -eq "$($Rule.Value)") { $match = $true } }
-                "MultiString" { 
+                "MultiString" {
                     # Compare arrays
-                    if ($null -ne $currentValue -and ($currentValue | Sort-Object) -join ',' -eq ($Rule.Value | Sort-Object) -join ',') { 
-                        $match = $true 
-                    } 
+                    if ($null -ne $currentValue -and ($currentValue | Sort-Object) -join ',' -eq ($Rule.Value | Sort-Object) -join ',') {
+                        $match = $true
+                    }
                 }
                 Default { if ("$currentValue" -eq "$($Rule.Value)") { $match = $true } } # Fallback
             }
@@ -123,4 +124,3 @@ function Invoke-ThemisRegistryRule {
 
     return $result
 }
-

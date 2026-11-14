@@ -1,5 +1,26 @@
-PSGetModuleInfo.xml
-*.log
-.vscode/
-
+# Build output (see build.ps1)
 output/
+
+# Test results
+TestResults/
+testResults.xml
+coverage.xml
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+*.old
+temp/
+tmp/
+
+# Packages
+*.nupkg
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

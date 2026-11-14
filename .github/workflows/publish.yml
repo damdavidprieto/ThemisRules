@@ -1,15 +1,21 @@
 name: Publish
 
-# Publishes output/ThemisRules (never the repository root) to the PowerShell Gallery when a
-# version tag is pushed, e.g. `git tag v1.3.0 && git push origin v1.3.0`.
-# Needs the PSGALLERY_API_KEY repository secret: a Gallery API key scoped to ThemisRules only.
+# Same workflow in HermesConsoleUI, ArgosCCF and ThemisRules; only MODULE_NAME changes.
+# Publishes output/<module> (never the repository root) to the PowerShell Gallery when a version
+# tag is pushed, e.g. `git tag v1.3.0 && git push origin v1.3.0`, then creates a GitHub release
+# with that version's CHANGELOG section.
+# Needs the PSGALLERY_API_KEY secret in the `psgallery` environment: a Gallery API key scoped to
+# this package only.
 
 on:
   push:
     tags: [ 'v*' ]
 
 permissions:
-  contents: read
+  contents: write
+
+env:
+  MODULE_NAME: ThemisRules
 
 jobs:
   publish:
@@ -20,16 +26,17 @@ jobs:
 
       - name: Analyze, test and build
         shell: pwsh
-        run: |
-          Install-Module Pester -MinimumVersion 5.0.0 -MaximumVersion 5.99.99 -Force -SkipPublisherCheck -Scope CurrentUser
-          Install-Module PSScriptAnalyzer -Force -SkipPublisherCheck -Scope CurrentUser
-          ./build.ps1
+        run: ./build.ps1 -InstallDependencies
 
-      - name: Check the tag matches the manifest version
+      - name: Check the tag matches the manifest and the changelog
         shell: pwsh
         run: |
-          $version = (Import-PowerShellDataFile ./output/ThemisRules/ThemisRules.psd1).ModuleVersion
+          $version = (Import-PowerShellDataFile "./output/$env:MODULE_NAME/$env:MODULE_NAME.psd1").ModuleVersion
           if ("v$version" -ne $env:GITHUB_REF_NAME) { throw "Tag $env:GITHUB_REF_NAME does not match ModuleVersion $version" }
+          $changelog = Get-Content ./CHANGELOG.md -Raw
+          $section = [regex]::Match($changelog, "(?ms)^## \[$([regex]::Escape($version))\][^\n]*\n(.*?)(?=^## \[|\z)").Groups[1].Value.Trim()
+          if (-not $section) { throw "CHANGELOG.md has no section for $version" }
+          Set-Content -Path release-notes.md -Value $section -Encoding utf8
 
       - name: Publish to the PowerShell Gallery
         shell: pwsh
@@ -37,4 +44,10 @@ jobs:
           PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
         run: |
           if (-not $env:PSGALLERY_API_KEY) { throw 'PSGALLERY_API_KEY secret is not set' }
-          Publish-PSResource -Path ./output/ThemisRules -Repository PSGallery -ApiKey $env:PSGALLERY_API_KEY
+          Publish-PSResource -Path "./output/$env:MODULE_NAME" -Repository PSGallery -ApiKey $env:PSGALLERY_API_KEY
+
+      - name: Create the GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create $env:GITHUB_REF_NAME --title "$env:MODULE_NAME $env:GITHUB_REF_NAME" --notes-file release-notes.md

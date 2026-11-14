@@ -5,6 +5,8 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
 ## [1.3.0] - 2026-11-14
 
 ### Security
@@ -18,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   provider. Only the module's own providers are registered now.
 - `Enforce` reported `Fixed` when starting or stopping a service, stopping a process or deleting a
   service had failed. Failures are now reported as `Error` or `EnforceFailed`.
+
+### Added
+- `Invoke-ThemisPolicy -Mode Enforce` supports `-WhatIf` and `-Confirm`: declined rules, or all rules with
+  `-WhatIf`, are only audited.
+- `New-ThemisPolicy -Force`; without it an existing file is not replaced. It also supports `-WhatIf`.
 
 ### Fixed
 - **The module exported no functions.** 1.2.0 imported its engine and providers as separate global
@@ -40,6 +47,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   publishes that folder. Removed `ThemisRules.nuspec` and `Tools/publish_module.ps1`, which took
   the Gallery API key as a parameter and published the repository root.
 - README describes the providers that exist (Registry, Service, Process).
+- `Get-ThemisProviders` is now `Get-ThemisProvider` (singular noun); the old name remains as an alias.
+- Policies are read as UTF-8 on Windows PowerShell 5.1.
+- `New-ThemisPolicy` no longer adds an empty `WMIRules` section, which has no provider and made every
+  new policy print a warning. `WMIRules` was also removed from the schema.
+- Example policies: `FullStack_Policy.json` is now `Workstation_Baseline.json` and no longer deletes the
+  DiagTrack service (it stops and disables it); `Gaming_Optimization.json` no longer has `WMIRules` and
+  `ScriptRules` sections, which no provider handles. The tests audit both examples.
+- Every exported command has complete help with examples.
+- Build and CI follow the structure of the Sampler module template: `PSScriptAnalyzerSettings.psd1`
+  (Windows PowerShell 5.1 and PowerShell 7 compatibility rules), QA tests for help, analyzer,
+  changelog and manifest, and a `Publish` workflow that also creates the GitHub release.
 
 ## [1.2.0] - 2026-02-08
 

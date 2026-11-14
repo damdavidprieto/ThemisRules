@@ -100,12 +100,12 @@ Describe 'Rule safety checks' -Skip:(-not $IsWindows -and $PSVersionTable.PSEdit
     }
 }
 
-Describe 'Get-ThemisProviders' {
+Describe 'Get-ThemisProvider' {
     It 'ignores matching functions defined outside the module' {
         function global:Invoke-ThemisSpoofRule { param($Rule, $Mode) @{ Status = 'Compliant'; IsCompliant = $true } }
         try {
             Import-Module (Join-Path $PSScriptRoot '../ThemisRules.psd1') -Force
-            (Get-ThemisProviders).Type | Should -Be @('Process', 'Registry', 'Service')
+            (Get-ThemisProvider).Type | Should -Be @('Process', 'Registry', 'Service')
         }
         finally {
             Remove-Item Function:\Invoke-ThemisSpoofRule -ErrorAction SilentlyContinue
@@ -114,11 +114,63 @@ Describe 'Get-ThemisProviders' {
 }
 
 Describe 'New-ThemisPolicy' {
-    It 'creates a policy that Invoke-ThemisPolicy can read' {
+    It 'creates a policy that Invoke-ThemisPolicy can read without warnings' {
         $path = Join-Path $TestDrive 'new.json'
         New-ThemisPolicy -Path $path -Name 'Empty' | Should -Not -BeNullOrEmpty
         (Get-Content $path -Raw | ConvertFrom-Json).Meta.Name | Should -Be 'Empty'
-        Invoke-ThemisPolicy -PolicyPath $path | Should -BeNullOrEmpty
+        Invoke-ThemisPolicy -PolicyPath $path -WarningVariable warnings | Should -BeNullOrEmpty
+        $warnings | Should -BeNullOrEmpty
+    }
+
+    It 'does not replace an existing file without -Force' {
+        $path = Join-Path $TestDrive 'existing.json'
+        Set-Content -Path $path -Value 'keep me'
+        { New-ThemisPolicy -Path $path } | Should -Throw
+        Get-Content $path | Should -Be 'keep me'
+        New-ThemisPolicy -Path $path -Force | Should -Not -BeNullOrEmpty
+    }
+
+    It 'supports -WhatIf' {
+        $path = Join-Path $TestDrive 'whatif.json'
+        New-ThemisPolicy -Path $path -WhatIf
+        $path | Should -Not -Exist
+    }
+}
+
+Describe 'Enforce with -WhatIf' -Skip:(-not $IsWindows -and $PSVersionTable.PSEdition -eq 'Core') {
+    BeforeEach {
+        New-Item -Path 'TestRegistry:\ThemisWhatIf' -Force | Out-Null
+        New-ItemProperty -Path 'TestRegistry:\ThemisWhatIf' -Name 'Setting' -Value 1 -PropertyType DWord | Out-Null
+        $policy = New-TestPolicy -Path (Join-Path $TestDrive 'whatif-policy.json') -Content @{
+            RegistryRules = @(@{ ID = 'W-1'; MacroLevel = 'L1'; Name = 'Setting'; Path = 'TestRegistry:\ThemisWhatIf'; ValueName = 'Setting'; Value = 0; Type = 'DWord' })
+        }
+    }
+
+    It 'only audits, without changing the system' {
+        $result = Invoke-ThemisPolicy -PolicyPath $policy -Mode Enforce -WhatIf
+        $result.Status | Should -Be 'Non-Compliant'
+        (Get-ItemProperty 'TestRegistry:\ThemisWhatIf').Setting | Should -Be 1
+    }
+}
+
+Describe 'Example policies' {
+    BeforeDiscovery {
+        $script:examplePolicies = Get-ChildItem -Path (Join-Path $PSScriptRoot '../Examples') -Filter '*.json' |
+            ForEach-Object { @{ Name = $_.Name; Path = $_.FullName } }
+    }
+
+    It '<Name> uses only sections that have a provider' -ForEach $examplePolicies {
+        $policy = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+        $sections = $policy.PSObject.Properties.Name | Where-Object { $_ -ne 'Meta' }
+        $supported = (Get-ThemisProvider).PolicySection
+        $sections | Where-Object { $_ -notin $supported } | Should -BeNullOrEmpty
+        $policy.Meta.Name | Should -Not -BeNullOrEmpty
+    }
+
+    It '<Name> runs in Audit mode' -ForEach $examplePolicies -Skip:(-not $IsWindows -and $PSVersionTable.PSEdition -eq 'Core') {
+        $results = @(Invoke-ThemisPolicy -PolicyPath $Path -Mode Audit -WarningVariable warnings)
+        $results.Count | Should -BeGreaterThan 0
+        $warnings | Should -BeNullOrEmpty
     }
 }
 

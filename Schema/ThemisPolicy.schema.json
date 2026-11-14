@@ -142,26 +142,6 @@
                     }
                 }
             }
-        },
-        "WMIRules": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "required": [
-                    "ID",
-                    "Name",
-                    "Query",
-                    "Condition"
-                ],
-                "properties": {
-                    "Query": {
-                        "type": "string"
-                    },
-                    "Condition": {
-                        "type": "string"
-                    }
-                }
-            }
         }
     }
 }
