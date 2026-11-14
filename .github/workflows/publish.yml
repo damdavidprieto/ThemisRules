@@ -4,8 +4,12 @@ name: Publish
 # Publishes output/<module> (never the repository root) to the PowerShell Gallery when a version
 # tag is pushed, e.g. `git tag v1.3.0 && git push origin v1.3.0`, then creates a GitHub release
 # with that version's CHANGELOG section.
-# Needs the PSGALLERY_API_KEY secret in the `psgallery` environment: a Gallery API key scoped to
-# this package only.
+# Needs these secrets in the `psgallery` environment:
+#   PSGALLERY_API_KEY          a Gallery API key scoped to this package only
+#   CODE_SIGNING_PFX_BASE64    the code signing certificate (.pfx), base64-encoded
+#   CODE_SIGNING_PFX_PASSWORD  the password of that .pfx
+# Every .ps1, .psm1 and .psd1 is Authenticode-signed before it is published; the job fails if
+# the signature is not valid.
 
 on:
   push:
@@ -27,6 +31,37 @@ jobs:
       - name: Analyze, test and build
         shell: pwsh
         run: ./build.ps1 -InstallDependencies
+
+      - name: Sign the module with the code signing certificate
+        shell: pwsh
+        env:
+          CODE_SIGNING_PFX_BASE64: ${{ secrets.CODE_SIGNING_PFX_BASE64 }}
+          CODE_SIGNING_PFX_PASSWORD: ${{ secrets.CODE_SIGNING_PFX_PASSWORD }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:CODE_SIGNING_PFX_BASE64) { throw 'CODE_SIGNING_PFX_BASE64 secret is not set: the module must be signed before it is published.' }
+          $pfxPath = Join-Path $env:RUNNER_TEMP 'codesign.pfx'
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:CODE_SIGNING_PFX_BASE64))
+          try {
+              $password = ConvertTo-SecureString $env:CODE_SIGNING_PFX_PASSWORD -AsPlainText -Force
+              $cert = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password
+          }
+          finally {
+              Remove-Item -LiteralPath $pfxPath -Force
+          }
+          # Compare the OID, not the name: the friendly name is localised ("Code Signing", "Firma de código"...).
+          if (-not ($cert.EnhancedKeyUsageList.ObjectId -contains '1.3.6.1.5.5.7.3.3')) { throw 'The certificate is not a code signing certificate.' }
+
+          $files = Get-ChildItem -Path "./output/$env:MODULE_NAME" -Recurse -File -Include '*.ps1', '*.psm1', '*.psd1'
+          $results = $files | Set-AuthenticodeSignature -Certificate $cert -HashAlgorithm SHA256 -TimestampServer 'http://timestamp.digicert.com'
+          $bad = @($results | Where-Object { $_.Status -ne 'Valid' })
+          if ($bad) { throw "Signing failed for: $($bad.Path -join ', ') ($($bad.StatusMessage -join '; '))" }
+
+          # Check every file again, the way a user's Install-Module would.
+          $unsigned = @(Get-ChildItem -Path "./output/$env:MODULE_NAME" -Recurse -File -Include '*.ps1', '*.psm1', '*.psd1' |
+              Get-AuthenticodeSignature | Where-Object { $_.Status -ne 'Valid' })
+          if ($unsigned) { throw "Signature check failed for: $($unsigned.Path -join ', ')" }
+          Write-Host "Signed $($files.Count) files with $($cert.Subject)"
 
       - name: Check the tag matches the manifest and the changelog
         shell: pwsh
