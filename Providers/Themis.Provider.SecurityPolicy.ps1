@@ -68,6 +68,8 @@ function Invoke-ThemisSecurityPolicyRule {
                 $result.IsCompliant = $true
                 $result.Reason = "$key set to $value."
                 $result.Actual = $after
+                $old = 0
+                if ([int]::TryParse("$current", [ref]$old)) { $result.Previous = [ordered]@{ Key = $key; Value = $old } }
             }
             else {
                 $result.Status = 'EnforceFailed'

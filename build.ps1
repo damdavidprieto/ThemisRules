@@ -58,11 +58,11 @@ if (-not $SkipAnalysis) {
     $settings = Join-Path $PSScriptRoot 'PSScriptAnalyzerSettings.psd1'
     $sources = $runtimeItems | ForEach-Object { Join-Path $PSScriptRoot $_ } |
         Get-ChildItem -Recurse -Include '*.ps1', '*.psm1', '*.psd1' -File
-    # PSScriptAnalyzer 1.2x can throw a NullReferenceException the first time it runs its rules
-    # in a new process; the same call succeeds when repeated, so retry once.
+    # PSScriptAnalyzer 1.2x can throw a NullReferenceException (its message depends on the Windows language) the first time it runs its rules
+    # in a new process; the same call succeeds when repeated, so retry once; a second failure is reported.
     $issues = foreach ($source in $sources) {
         try { Invoke-ScriptAnalyzer -Path $source.FullName -Settings $settings -ErrorAction Stop }
-        catch { if ($_.Exception.Message -match 'Object reference') { Invoke-ScriptAnalyzer -Path $source.FullName -Settings $settings } else { throw } }
+        catch { Write-Verbose "Retrying after: $($_.Exception.Message)"; Invoke-ScriptAnalyzer -Path $source.FullName -Settings $settings }
     }
     if ($issues) {
         $issues | Format-Table RuleName, Severity, ScriptName, Line, Message -AutoSize -Wrap | Out-Host

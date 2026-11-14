@@ -55,6 +55,12 @@ function Invoke-ThemisServiceRule {
         $result.Actual = "$($svc.Status) ($($svc.StartType))"
         $reasons = @()
 
+        # What to restore. Only states and startup types a rule can express are recorded; a deleted
+        # service cannot be brought back, so Action = Absent leaves nothing to restore.
+        $previous = [ordered]@{ Name = $svc.Name }
+        if ("$($svc.Status)" -in 'Running', 'Stopped') { $previous.State = "$($svc.Status)" }
+        if ("$($svc.StartType)" -in 'Automatic', 'Manual', 'Disabled') { $previous.StartupType = "$($svc.StartType)" }
+
         # Check Startup Type
         if ($Rule.StartupType) {
             if ($svc.StartType -ne $Rule.StartupType) {
@@ -101,6 +107,8 @@ function Invoke-ThemisServiceRule {
                 # Assume strictly fixed for now if no exception thrown
                 $result.IsCompliant = $true
                 $result.Status = "Fixed"
+                if ($Rule.Action -ne 'Absent' -and $previous.Count -gt 1) { $result.Previous = $previous }
+                elseif ($Rule.Action -eq 'Absent') { $reasons += 'A deleted service cannot be restored from a backup.' }
             }
             else {
                 $result.IsCompliant = $false

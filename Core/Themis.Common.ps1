@@ -126,44 +126,87 @@ function Set-ThemisAuditPolicySetting {
     $script:ThemisRunCache.Remove('AuditPolicy')
 }
 
-# --- Security policy (secedit, [System Access]) ---
+# --- Local security policy and user rights (secedit) ---
 
-function Get-ThemisSecurityPolicy {
+function Read-ThemisSecurityTemplate {
     <#
     .SYNOPSIS
-        Returns the [System Access] section of the local security policy as a hashtable.
-    .DESCRIPTION
-        Uses secedit /export. Needs elevation.
+        Exports the local security policy once per run and returns its [System Access] and
+        [Privilege Rights] sections. Needs elevation.
     #>
     [CmdletBinding()]
     [OutputType([hashtable])]
     param()
 
-    if ($script:ThemisRunCache.ContainsKey('SecurityPolicy')) { return $script:ThemisRunCache['SecurityPolicy'] }
+    if ($script:ThemisRunCache.ContainsKey('SecurityTemplate')) { return $script:ThemisRunCache['SecurityTemplate'] }
 
     $file = Join-Path ([IO.Path]::GetTempPath()) ("themis_secpol_{0}.inf" -f [guid]::NewGuid().ToString('N'))
     try {
-        $null = & secedit.exe /export /cfg $file /areas SECURITYPOLICY /quiet
+        $null = & secedit.exe /export /cfg $file /areas SECURITYPOLICY USER_RIGHTS /quiet
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $file)) { throw "secedit /export failed with exit code $LASTEXITCODE." }
 
-        $settings = @{}
-        $inSection = $false
+        $template = @{ 'System Access' = @{}; 'Privilege Rights' = @{} }
+        $section = $null
         foreach ($line in Get-Content -LiteralPath $file) {
-            if ($line -match '^\s*\[(.+)\]\s*$') { $inSection = ($matches[1] -eq 'System Access'); continue }
-            if ($inSection -and $line -match '^\s*([A-Za-z]+)\s*=\s*(.*?)\s*$') { $settings[$matches[1]] = $matches[2].Trim('"') }
+            if ($line -match '^\s*\[(.+)\]\s*$') { $section = $matches[1]; continue }
+            if ($template.ContainsKey("$section") -and $line -match '^\s*([A-Za-z]+)\s*=\s*(.*?)\s*$') {
+                $template[$section][$matches[1]] = $matches[2].Trim('"')
+            }
         }
-        $script:ThemisRunCache['SecurityPolicy'] = $settings
-        return $settings
+        $script:ThemisRunCache['SecurityTemplate'] = $template
+        return $template
     }
     finally {
         Remove-Item -LiteralPath $file -ErrorAction SilentlyContinue
     }
 }
 
+function Invoke-ThemisSecurityTemplate {
+    <#
+    .SYNOPSIS
+        Applies lines of one section of a security template with secedit /configure.
+    #>
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [Parameter(Mandatory = $true)][ValidateSet('System Access', 'Privilege Rights')][string]$Section,
+        [Parameter(Mandatory = $true)][string[]]$Lines
+    )
+
+    if (-not $PSCmdlet.ShouldProcess($Section, 'Set local security policy')) { return }
+
+    $area = if ($Section -eq 'System Access') { 'SECURITYPOLICY' } else { 'USER_RIGHTS' }
+    $id = [guid]::NewGuid().ToString('N')
+    $inf = Join-Path ([IO.Path]::GetTempPath()) "themis_secpol_$id.inf"
+    $db = Join-Path ([IO.Path]::GetTempPath()) "themis_secpol_$id.sdb"
+    $content = @('[Unicode]', 'Unicode=yes', "[$Section]") + $Lines + @('[Version]', 'signature="$CHICAGO$"', 'Revision=1')
+    try {
+        Set-Content -LiteralPath $inf -Value $content -Encoding Unicode
+        $null = & secedit.exe /configure /db $db /cfg $inf /areas $area /quiet
+        if ($LASTEXITCODE -ne 0) { throw "secedit /configure failed with exit code $LASTEXITCODE." }
+    }
+    finally {
+        Remove-Item -LiteralPath $inf, $db -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath ($db -replace '\.sdb$', '.jfm') -ErrorAction SilentlyContinue
+        $script:ThemisRunCache.Remove('SecurityTemplate')
+    }
+}
+
+function Get-ThemisSecurityPolicy {
+    <#
+    .SYNOPSIS
+        Returns the [System Access] section of the local security policy as a hashtable.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param()
+
+    return (Read-ThemisSecurityTemplate)['System Access']
+}
+
 function Set-ThemisSecurityPolicy {
     <#
     .SYNOPSIS
-        Applies [System Access] values to the local security policy with secedit /configure.
+        Applies [System Access] values (whole numbers, checked by the provider) to the local security policy.
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -171,23 +214,67 @@ function Set-ThemisSecurityPolicy {
     )
 
     if (-not $PSCmdlet.ShouldProcess(($Settings.Keys -join ', '), 'Set local security policy')) { return }
+    $lines = foreach ($key in $Settings.Keys) { "$key = $([int]$Settings[$key])" }
+    Invoke-ThemisSecurityTemplate -Section 'System Access' -Lines $lines -Confirm:$false
+}
 
-    $id = [guid]::NewGuid().ToString('N')
-    $inf = Join-Path ([IO.Path]::GetTempPath()) "themis_secpol_$id.inf"
-    $db = Join-Path ([IO.Path]::GetTempPath()) "themis_secpol_$id.sdb"
-    $lines = @('[Unicode]', 'Unicode=yes', '[System Access]')
-    $lines += foreach ($key in $Settings.Keys) { "$key = $($Settings[$key])" }
-    $lines += @('[Version]', 'signature="$CHICAGO$"', 'Revision=1')
+function ConvertTo-ThemisSid {
+    <#
+    .SYNOPSIS
+        Turns a secedit principal ("*S-1-5-32-544" or an account name) into a SID string.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([Parameter(Mandatory = $true)][string]$Principal)
+
+    $value = $Principal.Trim()
+    if ($value.StartsWith('*')) { return $value.Substring(1).ToUpperInvariant() }
+    if ($value -match '^S-1-[0-9-]+$') { return $value.ToUpperInvariant() }
     try {
-        Set-Content -LiteralPath $inf -Value $lines -Encoding Unicode
-        $null = & secedit.exe /configure /db $db /cfg $inf /areas SECURITYPOLICY /quiet
-        if ($LASTEXITCODE -ne 0) { throw "secedit /configure failed with exit code $LASTEXITCODE." }
+        return ([System.Security.Principal.NTAccount]$value).Translate([System.Security.Principal.SecurityIdentifier]).Value
     }
-    finally {
-        Remove-Item -LiteralPath $inf, $db -ErrorAction SilentlyContinue
-        Remove-Item -LiteralPath ($db -replace '\.sdb$', '.jfm') -ErrorAction SilentlyContinue
-        $script:ThemisRunCache.Remove('SecurityPolicy')
+    catch {
+        return $value
     }
+}
+
+function Get-ThemisUserRight {
+    <#
+    .SYNOPSIS
+        Returns the user rights assignments as @{ 'SeDebugPrivilege' = @('S-1-5-32-544', ...) }.
+    .DESCRIPTION
+        Principals are returned as SIDs, so the result does not depend on the Windows language.
+        Rights that nobody holds are absent from the result. Needs elevation.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param()
+
+    $rights = @{}
+    $section = (Read-ThemisSecurityTemplate)['Privilege Rights']
+    foreach ($right in $section.Keys) {
+        $rights[$right] = @("$($section[$right])" -split ',' | Where-Object { $_.Trim() } | ForEach-Object { ConvertTo-ThemisSid -Principal $_ } | Sort-Object -Unique)
+    }
+    return $rights
+}
+
+function Set-ThemisUserRight {
+    <#
+    .SYNOPSIS
+        Assigns a user right to exactly the given SIDs (none removes it from everyone).
+    #>
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [Parameter(Mandatory = $true)][ValidatePattern('^Se[A-Za-z]+(Privilege|Right)$')][string]$Right,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$Principals
+    )
+
+    foreach ($sid in $Principals) {
+        if ($sid -notmatch '^S-1-[0-9]+(-[0-9]+)+$') { throw "Not a SID: '$sid'." }
+    }
+    if (-not $PSCmdlet.ShouldProcess($Right, "Assign to $(if ($Principals) { $Principals -join ', ' } else { 'nobody' })")) { return }
+    $value = ($Principals | ForEach-Object { "*$_" }) -join ','
+    Invoke-ThemisSecurityTemplate -Section 'Privilege Rights' -Lines @("$Right = $value") -Confirm:$false
 }
 
 # --- Windows Firewall profiles ---

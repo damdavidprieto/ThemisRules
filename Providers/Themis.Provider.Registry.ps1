@@ -52,6 +52,37 @@ function Invoke-ThemisRegistryRule {
         return $result
     }
 
+    # Ensure = Absent: the value must not exist. Backups use it to undo a value that Enforce created.
+    if ($Rule.Ensure -eq 'Absent') {
+        try {
+            $existing = if (Test-Path -LiteralPath $Rule.Path) { Get-ItemProperty -LiteralPath $Rule.Path -Name $Rule.ValueName -ErrorAction SilentlyContinue }
+            if ($null -eq $existing) {
+                $result.Status = 'Compliant'
+                $result.IsCompliant = $true
+                $result.Reason = "Value '$($Rule.ValueName)' is not set."
+                return $result
+            }
+            $oldValue = $existing.$($Rule.ValueName)
+            $result.Actual = $oldValue
+            $result.Status = 'Non-Compliant'
+            $result.Reason = "Value '$($Rule.ValueName)' should not exist but is $oldValue."
+            if ($Mode -eq 'Enforce') {
+                $kind = (Get-Item -LiteralPath $Rule.Path).GetValueKind($Rule.ValueName).ToString()
+                Remove-ItemProperty -LiteralPath $Rule.Path -Name $Rule.ValueName -ErrorAction Stop
+                $result.Status = 'Fixed'
+                $result.IsCompliant = $true
+                $result.Reason = "Value '$($Rule.ValueName)' removed."
+                $result.Actual = $null
+                $result.Previous = [ordered]@{ Path = $Rule.Path; ValueName = $Rule.ValueName; Value = $oldValue; Type = $kind }
+            }
+        }
+        catch {
+            $result.Status = 'Error'
+            $result.Reason = "Provider Error: $_"
+        }
+        return $result
+    }
+
     try {
         if (-not (Test-Path -LiteralPath $Rule.Path)) {
             if ($null -ne $Rule.Default -and (Test-ThemisValue -Actual $Rule.Default -Rule $Rule).Match) {
@@ -113,12 +144,20 @@ function Invoke-ThemisRegistryRule {
         # ENFORCEMENT
         if ($Mode -eq "Enforce" -and -not $result.IsCompliant) {
             try {
+                # What to restore: the old value and its type, or "absent" if there was none.
+                $previous = if ($null -ne $reg) {
+                    [ordered]@{ Path = $Rule.Path; ValueName = $Rule.ValueName; Value = $currentValue; Type = (Get-Item -LiteralPath $Rule.Path).GetValueKind($Rule.ValueName).ToString() }
+                }
+                else {
+                    [ordered]@{ Path = $Rule.Path; ValueName = $Rule.ValueName; Ensure = 'Absent' }
+                }
                 $ruleType = if ($Rule.Type) { $Rule.Type } else { "String" }
                 Set-ItemProperty -LiteralPath $Rule.Path -Name $Rule.ValueName -Value $Rule.Value -Type $ruleType -Force -ErrorAction Stop
                 $result.Status = "Fixed"
                 $result.IsCompliant = $true
                 $result.Reason = "Value set to $($Rule.Value)."
                 $result.Actual = (Get-ItemProperty -LiteralPath $Rule.Path -Name $Rule.ValueName -ErrorAction SilentlyContinue).$($Rule.ValueName)
+                $result.Previous = $previous
             }
             catch {
                 $result.Status = "EnforceFailed"

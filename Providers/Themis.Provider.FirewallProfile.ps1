@@ -82,6 +82,8 @@ function Invoke-ThemisFirewallProfileRule {
                 $result.IsCompliant = $true
                 $result.Reason = "$profileName profile: $setting set to $newValue."
                 $result.Actual = $after
+                $oldValue = if ($allowed) { $current } else { [int]$current }
+                $result.Previous = [ordered]@{ Profile = $profileName; Setting = $setting; Value = $oldValue }
             }
             else {
                 $result.Status = 'EnforceFailed'

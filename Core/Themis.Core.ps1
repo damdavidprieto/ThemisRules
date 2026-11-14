@@ -39,7 +39,8 @@ function Invoke-ThemisPolicy {
     .DESCRIPTION
         Reads the policy (a file, or a baseline shipped with the module: see Get-ThemisBaseline)
         and evaluates every rule with the provider for its section: RegistryRules, ServiceRules,
-        ProcessRules, AuditPolicyRules, SecurityPolicyRules and FirewallProfileRules. It returns one result per rule
+        ProcessRules, AuditPolicyRules, SecurityPolicyRules, UserRightsRules and FirewallProfileRules.
+        It returns one result per rule
         with Timestamp, Policy, PolicyPath, ID, Type, Name, MacroLevel, Status, IsCompliant,
         Reason and Actual. Status is Compliant, Non-Compliant, Fixed, Missing*, EnforceFailed
         or Error.
@@ -47,6 +48,10 @@ function Invoke-ThemisPolicy {
         policy: it writes registry values, starts, stops, reconfigures or deletes services and
         stops processes. Enforce supports -WhatIf and -Confirm: rules you decline, or all rules
         with -WhatIf, are only audited. Run Enforce elevated for HKLM keys and services.
+        Before changing anything, Enforce records the previous values: when at least one rule is
+        changed, it saves them as a backup policy (see Get-ThemisBackup) and adds its path to the
+        results in the Backup property. Restore-ThemisBackup puts the old values back. Stopped
+        processes and deleted services cannot be restored.
         A policy runs with your permissions: only use policies from a source you trust.
         Sections without a provider are skipped with a warning.
 
@@ -63,6 +68,13 @@ function Invoke-ThemisPolicy {
     .PARAMETER MacroLevel
         Evaluate only rules up to this hardening level, L1 to L5. Rules without a level are
         always evaluated.
+
+    .PARAMETER BackupPath
+        Folder for the backups that Enforce writes. Defaults to ThemisRules\Backups under
+        %LOCALAPPDATA% (or ~/.local/share).
+
+    .PARAMETER NoBackup
+        Do not write a backup in Enforce mode.
 
     .EXAMPLE
         Invoke-ThemisPolicy -Baseline Windows-Workstation -MacroLevel L1
@@ -86,7 +98,7 @@ function Invoke-ThemisPolicy {
         Saves the rules that do not comply as an HTML report.
     #>
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Path')]
-    [OutputType([pscustomobject[]])]
+    [OutputType([pscustomobject[]], [object[]])]
     param(
         [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'Path')]
         [string]$PolicyPath,
@@ -105,7 +117,11 @@ function Invoke-ThemisPolicy {
         [string]$Mode = 'Audit',
 
         [ValidatePattern('^L[1-5]$')]
-        [string]$MacroLevel = $null
+        [string]$MacroLevel = $null,
+
+        [string]$BackupPath = (Get-ThemisBackupFolder),
+
+        [switch]$NoBackup
     )
 
     # 1. Initialize
@@ -174,6 +190,7 @@ function Invoke-ThemisPolicy {
 
     Write-Verbose "Total rules after filtering: $($allRules.Count)"
     $results = @()
+    $backupRules = [System.Collections.Generic.List[object]]::new()
 
     # 3. Execution
 
@@ -206,8 +223,16 @@ function Invoke-ThemisPolicy {
                 IsCompliant = $res.IsCompliant
                 Reason      = $res.Reason
                 Actual      = $res.Actual
+                Backup      = $null
             }
             $results += $obj
+
+            if ($res.Contains('Previous') -and $res.Previous) {
+                $restore = [ordered]@{ ID = $rule.ID }
+                if (-not $res.Previous.Contains('Name')) { $restore.Name = "Restore: $($rule.Name)" }
+                foreach ($key in $res.Previous.Keys) { $restore[$key] = $res.Previous[$key] }
+                $backupRules.Add([pscustomobject]@{ Section = "${type}Rules"; Rule = $restore; Result = $obj })
+            }
 
         }
         catch {
@@ -215,5 +240,63 @@ function Invoke-ThemisPolicy {
         }
     }
 
+    # 4. Backup of the values Enforce changed, as a policy that puts them back.
+    if ($backupRules.Count -gt 0 -and -not $NoBackup) {
+        $file = Save-ThemisBackup -Folder $BackupPath -PolicyName $policyName -PolicyPath $PolicyPath -Entries $backupRules -Confirm:$false
+        foreach ($entry in $backupRules) { $entry.Result.Backup = $file }
+        Write-Verbose "Previous values saved to $file. Restore them with Restore-ThemisBackup -Path '$file'."
+    }
+
     return $results
+}
+
+function Get-ThemisBackupFolder {
+    <#
+    .SYNOPSIS
+        Default folder for Enforce backups.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param()
+
+    $base = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { Join-Path $HOME '.local/share' }
+    return (Join-Path (Join-Path $base 'ThemisRules') 'Backups')
+}
+
+function Save-ThemisBackup {
+    <#
+    .SYNOPSIS
+        Writes the previous values recorded by Enforce as a policy file and returns its path.
+    #>
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)][string]$Folder,
+        [Parameter(Mandatory = $true)][string]$PolicyName,
+        [Parameter(Mandatory = $true)][string]$PolicyPath,
+        [Parameter(Mandatory = $true)][object[]]$Entries
+    )
+
+    if (-not (Test-Path -LiteralPath $Folder)) { New-Item -ItemType Directory -Path $Folder -Force | Out-Null }
+    $stamp = Get-Date
+    $safeName = ($PolicyName -replace '[^A-Za-z0-9._-]+', '-').Trim('-')
+    $file = Join-Path $Folder ("{0}-{1}.json" -f $stamp.ToString('yyyyMMdd-HHmmss'), $safeName)
+
+    $backup = [ordered]@{
+        Meta = [ordered]@{
+            Name         = "Backup before enforcing $PolicyName"
+            Version      = '1.0.0'
+            Created      = $stamp.ToString('yyyy-MM-dd HH:mm:ss')
+            SourcePolicy = $PolicyPath
+            Description  = 'Values that Invoke-ThemisPolicy -Mode Enforce changed, as they were before. Apply it with Restore-ThemisBackup to put them back.'
+        }
+    }
+    foreach ($group in $Entries | Group-Object Section) {
+        $backup[$group.Name] = @($group.Group | ForEach-Object { $_.Rule })
+    }
+
+    if ($PSCmdlet.ShouldProcess($file, 'Save backup of previous values')) {
+        $backup | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $file -Encoding UTF8
+    }
+    return $file
 }

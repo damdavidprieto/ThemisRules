@@ -27,11 +27,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   service had failed. Failures are now reported as `Error` or `EnforceFailed`.
 
 ### Added
-- **Windows workstation baseline** (`Baselines/Windows-Workstation.json`): 99 rules in levels L1 (77),
-  L2 (19) and L3 (3), covering User Account Control, credential protection, SMB and name resolution,
+- **Windows workstation baseline** (`Baselines/Windows-Workstation.json`): 150 rules in levels L1 (111),
+  L2 (36) and L3 (3), covering User Account Control, credential protection, SMB and name resolution,
   Remote Desktop and WinRM, malware entry points, logging, advanced audit policy, password and lockout
-  policy, Windows Firewall profiles, services and diagnostic data. Run it with
+  policy, user rights assignment, Microsoft Defender and attack surface reduction, Windows Firewall
+  profiles, services and diagnostic data. Run it with
   `Invoke-ThemisPolicy -Baseline Windows-Workstation`; `Get-ThemisBaseline` lists the shipped baselines.
+- **Undo**: Enforce records the previous value of every rule it changes and saves them as a backup
+  policy. `Get-ThemisBackup` lists the backups and `Restore-ThemisBackup` puts the values back
+  (stopped processes and deleted services excepted). `-BackupPath` and `-NoBackup` control it.
+- **User rights assignment**: `UserRightsRules` check and set who holds each right, by SID (independent
+  of the Windows language), with `Equal`, `Includes` and `Excludes`.
 - **New rule types**: `AuditPolicyRules` (advanced audit policy subcategories by GUID, independent of
   the Windows language), `SecurityPolicyRules` (password, lockout and account settings of the local
   security policy) and `FirewallProfileRules` (Domain, Private and Public profile settings).

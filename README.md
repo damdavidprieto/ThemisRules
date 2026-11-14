@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Audit and harden Windows with JSON policies. ThemisRules ships a ready-to-use **Windows workstation
-baseline** (99 rules in three levels) and lets you write your own policies with the same rule types.
+baseline** (150 rules in three levels) and lets you write your own policies with the same rule types.
 
 ```powershell
 Install-Module ThemisRules -Scope CurrentUser
@@ -15,8 +15,8 @@ Invoke-ThemisPolicy -Baseline Windows-Workstation -MacroLevel L1 |
     Export-ThemisReport -Path .\workstation-L1.html
 ```
 
-- **Six rule types**: registry values, services, processes, advanced audit policy, password and
-  lockout policy, and Windows Firewall profiles.
+- **Seven rule types**: registry values, services, processes, advanced audit policy, password and
+  lockout policy, user rights assignment, and Windows Firewall profiles.
 - **Audit or Enforce**: check only, or apply the expected configuration. `-WhatIf` and `-Confirm`
   work with Enforce.
 - **Hardening levels L1 to L5**: `-MacroLevel L1` evaluates only the rules up to L1.
@@ -50,10 +50,13 @@ commonly recommend, for Windows 10 and 11:
 | Windows Firewall | All three profiles on, inbound blocked by default, dropped-packet logging (L2) | 15 |
 | Services | Remote Registry, UPnP/SSDP (L2), Internet Connection Sharing (L2), Print Spooler and WebClient (L3) | 6 |
 | Privacy | Diagnostic data limited to required (L2) | 1 |
+| User rights assignment | Nobody may act as part of the OS or create tokens; debug, drivers, backup and restore for Administrators only; Guests denied every logon type; local accounts denied network and RDP logons (L2) | 32 |
+| Microsoft Defender | Real-time, behavior, download and script scanning on; removable drives and email scanned; attack surface reduction: LSASS, vulnerable drivers and WMI persistence (L1), Office, script and USB rules (L2) | 19 |
 
-- **L1** (77 rules): safe for any machine.
-- **L2** (19): stronger; may affect compatibility or convenience (for example LSA protection and
-  third-party authentication plug-ins).
+- **L1** (111 rules): safe for any machine.
+- **L2** (36): stronger; may affect compatibility or convenience (for example LSA protection and
+  third-party authentication plug-ins, Office attack surface reduction rules, or user rights that
+  SQL Server and IIS add for their own accounts).
 - **L3** (3): high security; turns features off (Windows Script Host, printing, WebDAV).
 
 Every rule has an ID, a name and, where useful, a description of why it matters. Registry rules
@@ -120,6 +123,7 @@ A policy is a JSON file with a `Meta` section and one array per rule type:
 |---|---|---|
 | `RegistryRules` | `Path`, `ValueName`, `Value`, `Type` (`DWord`, `QWord`, `String`, `MultiString`), optional `Default` | `Path` must be a registry path. |
 | `AuditPolicyRules` | `Subcategory` (GUID), `Setting` (`Success`, `Failure`, `SuccessAndFailure`, `NoAuditing`) | GUIDs, because subcategory names depend on the Windows language: `auditpol /list /subcategory:* /v`. Auditing more than required is compliant. |
+| `UserRightsRules` | `Right` (such as `SeDebugPrivilege`), `Principals` (SIDs), `Comparison` (`Equal`, `Includes`, `Excludes`) | SIDs, because account names depend on the Windows language: `S-1-5-32-544` is Administrators. `Equal` with no principals means nobody. |
 | `SecurityPolicyRules` | `Key`, `Value` (whole number) | `[System Access]` keys of the local security policy: password and lockout settings, Guest and Administrator accounts, anonymous name lookup. |
 | `FirewallProfileRules` | `Profile` (`Domain`, `Private`, `Public`), `Setting`, `Value` | Settings: `Enabled`, `DefaultInboundAction`, `DefaultOutboundAction`, `NotifyOnListen`, `LogBlocked`, `LogAllowed`, `LogMaxSizeKilobytes`. |
 | `ServiceRules` | `Name` and any of `State` (`Running`, `Stopped`), `StartupType` (`Automatic`, `Manual`, `Disabled`), `Action` (`Absent`) | A service that is not installed meets rules that want it stopped or disabled. `Absent` deletes the service in Enforce mode. |
@@ -136,6 +140,23 @@ you trust, and keep them where only administrators can edit them. Every rule is 
 runs: registry rules must point at the registry, service and process rules need an exact name (no
 wildcards), security policy keys come from a fixed list and take whole numbers only, and audit
 subcategories must be GUIDs.
+
+## Undoing an Enforce run
+
+Before Enforce changes anything it records the previous value. When at least one rule is changed it
+saves them as a backup (a policy that puts them back) and adds its path to every changed result:
+
+```powershell
+$results = Invoke-ThemisPolicy -Baseline Windows-Workstation -MacroLevel L1 -Mode Enforce
+Get-ThemisBackup                                    # newest first: time, policy, values, path
+Get-ThemisBackup | Select-Object -First 1 | Restore-ThemisBackup -WhatIf   # preview
+Get-ThemisBackup | Select-Object -First 1 | Restore-ThemisBackup           # undo
+```
+
+Backups cover registry values (including removing values that did not exist), service state and
+startup type, audit policy, password and lockout settings, user rights and firewall settings. Stopped
+processes and deleted services cannot be restored. Backups go to `ThemisRules\Backups` under
+`%LOCALAPPDATA%`; use `-BackupPath` to choose another folder, or `-NoBackup` to skip them.
 
 ## Results
 

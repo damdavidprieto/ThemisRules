@@ -34,6 +34,10 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "SourcePolicy": {
+                    "type": "string",
+                    "description": "In backups: the policy whose Enforce run saved them."
                 }
             }
         },
@@ -45,8 +49,7 @@
                     "ID",
                     "Name",
                     "Path",
-                    "ValueName",
-                    "Value"
+                    "ValueName"
                 ],
                 "properties": {
                     "ID": {
@@ -102,6 +105,13 @@
                             "number"
                         ],
                         "description": "Value Windows uses when the registry value is not set. If it meets the rule, a missing value is compliant."
+                    },
+                    "Ensure": {
+                        "type": "string",
+                        "enum": [
+                            "Absent"
+                        ],
+                        "description": "Absent: the value must not exist (Enforce removes it). Used by backups."
                     },
                     "Comparison": {
                         "type": "string",
@@ -261,6 +271,66 @@
                             "SuccessAndFailure",
                             "NoAuditing"
                         ]
+                    },
+                    "Exact": {
+                        "type": "boolean",
+                        "description": "Require exactly this setting instead of at least it. Used by backups."
+                    }
+                }
+            }
+        },
+        "UserRightsRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name",
+                    "Right",
+                    "Principals"
+                ],
+                "properties": {
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "Right": {
+                        "type": "string",
+                        "pattern": "^Se[A-Za-z]+(Privilege|Right)$",
+                        "description": "User right constant, such as SeDebugPrivilege."
+                    },
+                    "Principals": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "pattern": "^S-1-[0-9]+(-[0-9]+)+$"
+                        },
+                        "description": "SIDs, such as S-1-5-32-544 for Administrators. Names are not accepted."
+                    },
+                    "Comparison": {
+                        "type": "string",
+                        "enum": [
+                            "Equal",
+                            "Includes",
+                            "Excludes"
+                        ],
+                        "default": "Equal"
                     }
                 }
             }
