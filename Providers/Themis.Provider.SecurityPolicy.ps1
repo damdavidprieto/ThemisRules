@@ -61,6 +61,9 @@ function Invoke-ThemisSecurityPolicyRule {
         $result.Reason = "$key is $shown; required: $($check.Expected)."
 
         if ($Mode -eq 'Enforce') {
+            # Recorded before the change, so the backup covers it even if the read-back fails.
+            $old = 0
+            if ([int]::TryParse("$current", [ref]$old)) { $result.Previous = [ordered]@{ Key = $key; Value = $old } }
             Set-ThemisSecurityPolicy -Settings @{ $key = $value } -Confirm:$false
             $after = (Get-ThemisSecurityPolicy)[$key]
             if ((Test-ThemisValue -Actual $after -Rule $Rule).Match) {
@@ -68,8 +71,6 @@ function Invoke-ThemisSecurityPolicyRule {
                 $result.IsCompliant = $true
                 $result.Reason = "$key set to $value."
                 $result.Actual = $after
-                $old = 0
-                if ([int]::TryParse("$current", [ref]$old)) { $result.Previous = [ordered]@{ Key = $key; Value = $old } }
             }
             else {
                 $result.Status = 'EnforceFailed'

@@ -75,6 +75,9 @@ function Invoke-ThemisFirewallProfileRule {
 
         if ($Mode -eq 'Enforce') {
             $newValue = if ($allowed) { "$($Rule.Value)" } else { [int]$Rule.Value }
+            # Recorded before the change, so the backup covers it even if the read-back fails.
+            $oldValue = if ($allowed) { $current } else { [int]$current }
+            $result.Previous = [ordered]@{ Profile = $profileName; Setting = $setting; Value = $oldValue }
             Set-ThemisFirewallProfile -Name $profileName -Setting $setting -Value $newValue -Confirm:$false
             $after = "$((Get-ThemisFirewallProfile -Name $profileName).$setting)"
             if ((Test-ThemisValue -Actual $after -Rule $Rule).Match) {
@@ -82,8 +85,6 @@ function Invoke-ThemisFirewallProfileRule {
                 $result.IsCompliant = $true
                 $result.Reason = "$profileName profile: $setting set to $newValue."
                 $result.Actual = $after
-                $oldValue = if ($allowed) { $current } else { [int]$current }
-                $result.Previous = [ordered]@{ Profile = $profileName; Setting = $setting; Value = $oldValue }
             }
             else {
                 $result.Status = 'EnforceFailed'

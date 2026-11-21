@@ -50,7 +50,9 @@ function Invoke-ThemisPolicy {
         with -WhatIf, are only audited. Run Enforce elevated for HKLM keys and services.
         Before changing anything, Enforce records the previous values: when at least one rule is
         changed, it saves them as a backup policy (see Get-ThemisBackup) and adds its path to the
-        results in the Backup property. Restore-ThemisBackup puts the old values back. Stopped
+        results in the Backup property. The backup is updated after every changed rule, so if the
+        run stops halfway the values changed so far can still be restored; a value is also kept
+        when its change fails partway. Restore-ThemisBackup puts the old values back. Stopped
         processes and deleted services cannot be restored.
         A policy runs with your permissions: only use policies from a source you trust.
         Sections without a provider are skipped with a warning.
@@ -67,11 +69,12 @@ function Invoke-ThemisPolicy {
 
     .PARAMETER MacroLevel
         Evaluate only rules up to this hardening level, L1 to L5. Rules without a level are
-        always evaluated.
+        always evaluated; rules with a level that is not L1 to L5 are skipped with a warning.
 
     .PARAMETER BackupPath
         Folder for the backups that Enforce writes. Defaults to ThemisRules\Backups under
-        %LOCALAPPDATA% (or ~/.local/share).
+        %ProgramData% in an elevated session (a folder only administrators can change) and under
+        %LOCALAPPDATA% (or ~/.local/share) otherwise.
 
     .PARAMETER NoBackup
         Do not write a backup in Enforce mode.
@@ -166,10 +169,16 @@ function Invoke-ThemisPolicy {
             }
             else {
                 foreach ($rule in $prop.Value) {
-                    # Apply MacroLevel filter
-                    $ruleLevel = 999 # Default: include if no MacroLevel specified
-                    if ($rule.MacroLevel -and $rule.MacroLevel -match '^L([1-5])$') {
-                        $ruleLevel = [int]$matches[1]
+                    # MacroLevel filter. Rules without a level are always evaluated, as documented.
+                    # A level that is not L1-L5 is a mistake in the policy: with -MacroLevel the rule
+                    # is skipped with a warning instead of being applied at a level nobody chose.
+                    $ruleLevel = 0
+                    if ($rule.MacroLevel) {
+                        if ("$($rule.MacroLevel)" -match '^L([1-5])$') { $ruleLevel = [int]$matches[1] }
+                        elseif ($MacroLevel) {
+                            Write-Warning "[Themis] Rule $($rule.ID) has an invalid MacroLevel '$($rule.MacroLevel)' (use L1-L5); it is skipped."
+                            continue
+                        }
                     }
 
                     # Only include rules <= target level
@@ -191,6 +200,7 @@ function Invoke-ThemisPolicy {
     Write-Verbose "Total rules after filtering: $($allRules.Count)"
     $results = @()
     $backupRules = [System.Collections.Generic.List[object]]::new()
+    $backupFile = $null
 
     # 3. Execution
 
@@ -232,6 +242,13 @@ function Invoke-ThemisPolicy {
                 if (-not $res.Previous.Contains('Name')) { $restore.Name = "Restore: $($rule.Name)" }
                 foreach ($key in $res.Previous.Keys) { $restore[$key] = $res.Previous[$key] }
                 $backupRules.Add([pscustomobject]@{ Section = "${type}Rules"; Rule = $restore; Result = $obj })
+
+                # The backup is written after every change, not at the end: if the run stops
+                # halfway (error, Ctrl+C, power cut), the values changed so far can still be restored.
+                if (-not $NoBackup) {
+                    $backupFile = Save-ThemisBackup -Folder $BackupPath -PolicyName $policyName -PolicyPath $PolicyPath -Entries $backupRules -File $backupFile -Confirm:$false
+                    foreach ($entry in $backupRules) { $entry.Result.Backup = $backupFile }
+                }
             }
 
         }
@@ -240,11 +257,9 @@ function Invoke-ThemisPolicy {
         }
     }
 
-    # 4. Backup of the values Enforce changed, as a policy that puts them back.
-    if ($backupRules.Count -gt 0 -and -not $NoBackup) {
-        $file = Save-ThemisBackup -Folder $BackupPath -PolicyName $policyName -PolicyPath $PolicyPath -Entries $backupRules -Confirm:$false
-        foreach ($entry in $backupRules) { $entry.Result.Backup = $file }
-        Write-Verbose "Previous values saved to $file. Restore them with Restore-ThemisBackup -Path '$file'."
+    # 4. The backup of the values Enforce changed was written as each rule ran (see above).
+    if ($backupFile) {
+        Write-Verbose "Previous values saved to $backupFile. Restore them with Restore-ThemisBackup -Path '$backupFile'."
     }
 
     return $results
@@ -254,19 +269,100 @@ function Get-ThemisBackupFolder {
     <#
     .SYNOPSIS
         Default folder for Enforce backups.
+    .DESCRIPTION
+        Elevated sessions on Windows use ThemisRules\Backups under %ProgramData%, a folder that only
+        administrators and SYSTEM can change: a backup is restored as administrator, so a program
+        running without elevation must not be able to edit it. Other sessions use ThemisRules\Backups
+        under %LOCALAPPDATA% (or ~/.local/share); their changes are limited to what that user can
+        already do.
     #>
     [CmdletBinding()]
     [OutputType([string])]
     param()
 
+    if ((Test-ThemisElevated) -and $env:ProgramData) {
+        return (Join-Path (Join-Path $env:ProgramData 'ThemisRules') 'Backups')
+    }
     $base = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { Join-Path $HOME '.local/share' }
     return (Join-Path (Join-Path $base 'ThemisRules') 'Backups')
+}
+
+function Initialize-ThemisBackupFolder {
+    <#
+    .SYNOPSIS
+        Creates the backup folder. When elevated on Windows, it is owned by Administrators and only
+        SYSTEM and Administrators can change it (inherited permissions are removed).
+    .DESCRIPTION
+        Only the default elevated folder, under %ProgramData%\ThemisRules, is protected. The
+        protection is applied every time, also when the folder already exists: any user can create
+        folders in %ProgramData%, so a folder made beforehand by someone else is taken over instead
+        of trusted. The ThemisRules folder above it gets the same protection.
+    #>
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param([Parameter(Mandatory = $true)][string]$Folder)
+
+    if (-not $PSCmdlet.ShouldProcess($Folder, 'Create backup folder')) { return }
+    $null = [System.IO.Directory]::CreateDirectory($Folder)
+    # Only the default elevated folder is protected. A folder given with -BackupPath keeps its
+    # permissions: changing them could lock its owner out of their own folder.
+    if (-not (Test-ThemisElevated) -or -not $env:ProgramData) { return }
+    $root = [System.IO.Path]::GetFullPath((Join-Path $env:ProgramData 'ThemisRules'))
+    $full = [System.IO.Path]::GetFullPath($Folder).TrimEnd('\')
+    if ($full -ine $root -and -not $full.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)) { return }
+
+    $targets = @($root)
+    if ($full -ine $root) { $targets += $full }
+    foreach ($dir in $targets) {
+        $security = New-Object System.Security.AccessControl.DirectorySecurity
+        $security.SetSecurityDescriptorSddlForm('O:BAG:SYD:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)')
+        Set-Acl -LiteralPath $dir -AclObject $security -ErrorAction Stop
+    }
+}
+
+function Test-ThemisTrustedPath {
+    <#
+    .SYNOPSIS
+        True when only SYSTEM, Administrators and TrustedInstaller can change the file or folder.
+    .DESCRIPTION
+        Checks the owner and every allow entry that grants write, delete, permission or ownership
+        rights. Used before restoring a backup as administrator: a file that a program running
+        without elevation can edit must not decide what an elevated session writes. Inherit-only
+        entries do not apply to the object itself and are ignored. Always true off Windows.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    if (-not ($IsWindows -or $PSVersionTable.PSEdition -eq 'Desktop')) { return $true }
+    $trusted = 'S-1-5-18', 'S-1-5-32-544', 'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464'
+    # WriteData, AppendData, WriteExtendedAttributes, DeleteSubdirectoriesAndFiles, WriteAttributes,
+    # Delete, ChangePermissions, TakeOwnership, GenericAll and GenericWrite.
+    $writeMask = 0x2 -bor 0x4 -bor 0x10 -bor 0x40 -bor 0x100 -bor 0x10000 -bor 0x40000 -bor 0x80000 -bor 0x10000000 -bor 0x40000000
+    try {
+        $acl = Get-Acl -LiteralPath $Path -ErrorAction Stop
+        $owner = $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
+        if ($owner -notin $trusted) { return $false }
+        foreach ($ace in $acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier])) {
+            if ("$($ace.AccessControlType)" -ne 'Allow') { continue }
+            if ($ace.PropagationFlags -band [System.Security.AccessControl.PropagationFlags]::InheritOnly) { continue }
+            if (([int64]$ace.FileSystemRights -band $writeMask) -and $ace.IdentityReference.Value -notin $trusted) { return $false }
+        }
+        return $true
+    }
+    catch {
+        return $false
+    }
 }
 
 function Save-ThemisBackup {
     <#
     .SYNOPSIS
         Writes the previous values recorded by Enforce as a policy file and returns its path.
+    .DESCRIPTION
+        Called after every changed rule with all the entries recorded so far. The first call picks a
+        new file name (time to the millisecond plus a random suffix, so two runs never share a file);
+        later calls of the same run pass it in -File and replace its content. The file is written
+        under a temporary name and then moved into place, so it is never left half written.
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     [OutputType([string])]
@@ -274,13 +370,17 @@ function Save-ThemisBackup {
         [Parameter(Mandatory = $true)][string]$Folder,
         [Parameter(Mandatory = $true)][string]$PolicyName,
         [Parameter(Mandatory = $true)][string]$PolicyPath,
-        [Parameter(Mandatory = $true)][object[]]$Entries
+        [Parameter(Mandatory = $true)][object[]]$Entries,
+        [string]$File
     )
 
-    if (-not (Test-Path -LiteralPath $Folder)) { New-Item -ItemType Directory -Path $Folder -Force | Out-Null }
     $stamp = Get-Date
-    $safeName = ($PolicyName -replace '[^A-Za-z0-9._-]+', '-').Trim('-')
-    $file = Join-Path $Folder ("{0}-{1}.json" -f $stamp.ToString('yyyyMMdd-HHmmss'), $safeName)
+    if (-not $File) {
+        Initialize-ThemisBackupFolder -Folder $Folder -Confirm:$false
+        $safeName = ($PolicyName -replace '[^A-Za-z0-9._-]+', '-').Trim('-')
+        $suffix = [guid]::NewGuid().ToString('N').Substring(0, 6)
+        $File = Join-Path $Folder ("{0}-{1}-{2}.json" -f $stamp.ToString('yyyyMMdd-HHmmss-fff'), $suffix, $safeName)
+    }
 
     $backup = [ordered]@{
         Meta = [ordered]@{
@@ -295,8 +395,10 @@ function Save-ThemisBackup {
         $backup[$group.Name] = @($group.Group | ForEach-Object { $_.Rule })
     }
 
-    if ($PSCmdlet.ShouldProcess($file, 'Save backup of previous values')) {
-        $backup | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $file -Encoding UTF8
+    if ($PSCmdlet.ShouldProcess($File, 'Save backup of previous values')) {
+        $temp = "$File.tmp"
+        $backup | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $temp -Encoding UTF8
+        Move-Item -LiteralPath $temp -Destination $File -Force
     }
-    return $file
+    return $File
 }
