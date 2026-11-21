@@ -92,6 +92,9 @@ Describe 'Backups and Restore-ThemisBackup' -Skip:(-not $IsWindows -and $PSVersi
     }
 
     It 'Restore-ThemisBackup puts the old value back and removes the value Enforce created' {
+        # The backup is in the test drive, which an elevated session (such as the CI runners) does not
+        # trust; this test is about the restored values, so the trust check is covered elsewhere.
+        Mock -ModuleName ThemisRules Test-ThemisTrustedPath { $true }
         $results = Invoke-ThemisPolicy -PolicyPath $policy -Mode Enforce -BackupPath $backups
         Restore-ThemisBackup -Path $results[0].Backup | Out-Null
 
