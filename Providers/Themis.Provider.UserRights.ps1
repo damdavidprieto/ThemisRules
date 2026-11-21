@@ -81,6 +81,8 @@ function Invoke-ThemisUserRightsRule {
                 'Excludes' { $current | Where-Object { $_ -notin $wanted } }
             }
             $target = @($target | Sort-Object -Unique)
+            # Recorded before the change, so the backup covers it even if the read-back fails.
+            $result.Previous = [ordered]@{ Right = $right; Principals = @($current); Comparison = 'Equal' }
             Set-ThemisUserRight -Right $right -Principals $target -Confirm:$false
 
             $after = @((Get-ThemisUserRight)[$right])
@@ -89,7 +91,6 @@ function Invoke-ThemisUserRightsRule {
                 $result.IsCompliant = $true
                 $result.Reason = "$right assigned to $(if ($target) { $target -join ', ' } else { 'nobody' })."
                 $result.Actual = if ($after) { $after -join ', ' } else { '(nobody)' }
-                $result.Previous = [ordered]@{ Right = $right; Principals = @($current); Comparison = 'Equal' }
             }
             else {
                 $result.Status = 'EnforceFailed'

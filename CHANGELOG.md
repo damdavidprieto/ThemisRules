@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Windows tools are called by full path.** `auditpol`, `secedit` and `sc` were run by bare name, so
+  PowerShell looked in the current folder and the `PATH` first; in an elevated session a program planted
+  there with the same name would have run as administrator. They now run from the System32 folder.
+- **Backups cannot be edited without elevation.** Elevated runs save backups under
+  `%ProgramData%\ThemisRules\Backups`, owned by Administrators and changeable only by SYSTEM and
+  Administrators; a folder created there beforehand by another user is taken over. In an elevated
+  session `Restore-ThemisBackup` refuses a backup that users without elevation could change, because
+  restoring it writes its values as administrator. `-WhatIf` still previews any backup. Backups made
+  before this version are in `%LOCALAPPDATA%`; review one and copy it to the new folder to restore it
+  elevated.
+
+### Fixed
+- **A run that stops halfway can be undone.** The backup was written once, after every rule had run, so
+  an error, Ctrl+C or a power cut lost the previous values of what had already changed. It is now
+  updated after every changed rule, written to a temporary file and moved into place.
+- **Partly applied changes are kept in the backup.** Providers record the previous value before
+  changing anything. A service whose startup type changed but that then failed to start reported an
+  error and kept nothing to restore; it now reports `EnforceFailed` and its old startup type and state
+  are in the backup.
+- **Service rules are checked after Enforce.** The provider assumed every change worked; it now reads
+  the service again and reports `EnforceFailed` when it is not as the rule requires.
+- **`-MacroLevel` skipped rules without a level**, although the help says they are always evaluated.
+  They are now evaluated; a rule whose level is not L1 to L5 is skipped with a warning.
+- **Two runs in the same second wrote the same backup file.** Names now include milliseconds and a
+  random suffix.
+
 ## [1.3.0] - 2026-11-14
 
 ### Security

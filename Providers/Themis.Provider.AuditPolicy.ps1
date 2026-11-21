@@ -63,6 +63,8 @@ function Invoke-ThemisAuditPolicyRule {
 
         if ($Mode -eq 'Enforce') {
             $target = if ($Rule.Exact -or $wanted -eq 0) { $wanted } else { $current -bor $wanted }
+            # Recorded before the change, so the backup covers it even if the read-back fails.
+            $result.Previous = [ordered]@{ Subcategory = $subcategory; Setting = $names[$current]; Exact = $true }
             Set-ThemisAuditPolicySetting -Subcategory $subcategory -Success (($target -band 1) -eq 1) -Failure (($target -band 2) -eq 2) -Confirm:$false
             $after = [int](Get-ThemisAuditPolicySetting)[$subcategory]
             if ($after -eq $target) {
@@ -70,7 +72,6 @@ function Invoke-ThemisAuditPolicyRule {
                 $result.IsCompliant = $true
                 $result.Reason = "Audit setting changed to $($names[$target])."
                 $result.Actual = $names[$after]
-                $result.Previous = [ordered]@{ Subcategory = $subcategory; Setting = $names[$current]; Exact = $true }
             }
             else {
                 $result.Status = 'EnforceFailed'

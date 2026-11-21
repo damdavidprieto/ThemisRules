@@ -68,12 +68,12 @@ function Invoke-ThemisRegistryRule {
             $result.Reason = "Value '$($Rule.ValueName)' should not exist but is $oldValue."
             if ($Mode -eq 'Enforce') {
                 $kind = (Get-Item -LiteralPath $Rule.Path).GetValueKind($Rule.ValueName).ToString()
+                $result.Previous = [ordered]@{ Path = $Rule.Path; ValueName = $Rule.ValueName; Value = $oldValue; Type = $kind }
                 Remove-ItemProperty -LiteralPath $Rule.Path -Name $Rule.ValueName -ErrorAction Stop
                 $result.Status = 'Fixed'
                 $result.IsCompliant = $true
                 $result.Reason = "Value '$($Rule.ValueName)' removed."
                 $result.Actual = $null
-                $result.Previous = [ordered]@{ Path = $Rule.Path; ValueName = $Rule.ValueName; Value = $oldValue; Type = $kind }
             }
         }
         catch {
@@ -152,12 +152,13 @@ function Invoke-ThemisRegistryRule {
                     [ordered]@{ Path = $Rule.Path; ValueName = $Rule.ValueName; Ensure = 'Absent' }
                 }
                 $ruleType = if ($Rule.Type) { $Rule.Type } else { "String" }
+                # Recorded before the change: if the write fails halfway, the backup can still undo it.
+                $result.Previous = $previous
                 Set-ItemProperty -LiteralPath $Rule.Path -Name $Rule.ValueName -Value $Rule.Value -Type $ruleType -Force -ErrorAction Stop
                 $result.Status = "Fixed"
                 $result.IsCompliant = $true
                 $result.Reason = "Value set to $($Rule.Value)."
                 $result.Actual = (Get-ItemProperty -LiteralPath $Rule.Path -Name $Rule.ValueName -ErrorAction SilentlyContinue).$($Rule.ValueName)
-                $result.Previous = $previous
             }
             catch {
                 $result.Status = "EnforceFailed"

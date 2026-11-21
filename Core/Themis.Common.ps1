@@ -8,6 +8,22 @@
 # Invoke-ThemisPolicy clears it at the start of every run.
 $script:ThemisRunCache = @{}
 
+function Get-ThemisSystemTool {
+    <#
+    .SYNOPSIS
+        Full path of a Windows tool in System32 (auditpol.exe, secedit.exe, sc.exe).
+    .DESCRIPTION
+        Tools are never called by bare name: PowerShell would search the current folder and the
+        PATH first, and in an elevated session a program planted there with the same name would
+        run as administrator.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([Parameter(Mandatory = $true)][ValidatePattern('^[A-Za-z0-9_-]+\.exe$')][string]$Name)
+
+    return (Join-Path ([Environment]::GetFolderPath('System')) $Name)
+}
+
 function Test-ThemisElevated {
     <#
     .SYNOPSIS
@@ -87,7 +103,7 @@ function Get-ThemisAuditPolicySetting {
 
     $file = Join-Path ([IO.Path]::GetTempPath()) ("themis_audit_{0}.csv" -f [guid]::NewGuid().ToString('N'))
     try {
-        $null = & auditpol.exe /backup "/file:$file"
+        $null = & (Get-ThemisSystemTool 'auditpol.exe') /backup "/file:$file"
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $file)) { throw "auditpol /backup failed with exit code $LASTEXITCODE." }
 
         $settings = @{}
@@ -121,7 +137,7 @@ function Set-ThemisAuditPolicySetting {
     if (-not $PSCmdlet.ShouldProcess($Subcategory, 'Set audit policy')) { return }
     $successFlag = if ($Success) { 'enable' } else { 'disable' }
     $failureFlag = if ($Failure) { 'enable' } else { 'disable' }
-    $null = & auditpol.exe /set "/subcategory:$Subcategory" "/success:$successFlag" "/failure:$failureFlag"
+    $null = & (Get-ThemisSystemTool 'auditpol.exe') /set "/subcategory:$Subcategory" "/success:$successFlag" "/failure:$failureFlag"
     if ($LASTEXITCODE -ne 0) { throw "auditpol /set failed with exit code $LASTEXITCODE." }
     $script:ThemisRunCache.Remove('AuditPolicy')
 }
@@ -142,7 +158,7 @@ function Read-ThemisSecurityTemplate {
 
     $file = Join-Path ([IO.Path]::GetTempPath()) ("themis_secpol_{0}.inf" -f [guid]::NewGuid().ToString('N'))
     try {
-        $null = & secedit.exe /export /cfg $file /areas SECURITYPOLICY USER_RIGHTS /quiet
+        $null = & (Get-ThemisSystemTool 'secedit.exe') /export /cfg $file /areas SECURITYPOLICY USER_RIGHTS /quiet
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $file)) { throw "secedit /export failed with exit code $LASTEXITCODE." }
 
         $template = @{ 'System Access' = @{}; 'Privilege Rights' = @{} }
@@ -181,7 +197,7 @@ function Invoke-ThemisSecurityTemplate {
     $content = @('[Unicode]', 'Unicode=yes', "[$Section]") + $Lines + @('[Version]', 'signature="$CHICAGO$"', 'Revision=1')
     try {
         Set-Content -LiteralPath $inf -Value $content -Encoding Unicode
-        $null = & secedit.exe /configure /db $db /cfg $inf /areas $area /quiet
+        $null = & (Get-ThemisSystemTool 'secedit.exe') /configure /db $db /cfg $inf /areas $area /quiet
         if ($LASTEXITCODE -ne 0) { throw "secedit /configure failed with exit code $LASTEXITCODE." }
     }
     finally {

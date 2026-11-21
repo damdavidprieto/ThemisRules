@@ -155,8 +155,15 @@ Get-ThemisBackup | Select-Object -First 1 | Restore-ThemisBackup           # und
 
 Backups cover registry values (including removing values that did not exist), service state and
 startup type, audit policy, password and lockout settings, user rights and firewall settings. Stopped
-processes and deleted services cannot be restored. Backups go to `ThemisRules\Backups` under
-`%LOCALAPPDATA%`; use `-BackupPath` to choose another folder, or `-NoBackup` to skip them.
+processes and deleted services cannot be restored. The backup is updated after every changed rule,
+so a run that stops halfway can still be undone.
+
+Backups go to `ThemisRules\Backups` under `%ProgramData%` in an elevated session, a folder that only
+SYSTEM and Administrators can change, and under `%LOCALAPPDATA%` otherwise. Use `-BackupPath` to choose
+another folder, or `-NoBackup` to skip them. A backup is a policy that runs as administrator when you
+restore it, so in an elevated session `Restore-ThemisBackup` refuses a file that users without
+elevation could have edited (for example one in `%LOCALAPPDATA%` or in a `-BackupPath` folder): review
+it and copy it into the protected folder first. `-WhatIf` previews any backup.
 
 ## Results
 
