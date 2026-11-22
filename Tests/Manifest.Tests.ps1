@@ -30,8 +30,8 @@ Describe 'ThemisRules manifest' {
         $manifest.PrivateData.PSData.ProjectUri | Should -Be 'https://github.com/damdavidprieto/ThemisRules'
     }
 
-    It 'registers the ten providers' {
-        (Get-ThemisProvider).Type | Should -Be @('AuditPolicy', 'Check', 'Feature', 'FirewallProfile', 'LocalGroupMember', 'Process', 'Registry', 'SecureFolder', 'SecurityPolicy', 'Service', 'UserRights')
+    It 'registers the twelve providers' {
+        (Get-ThemisProvider).Type | Should -Be @('AuditPolicy', 'Check', 'EventLog', 'Feature', 'FirewallProfile', 'LocalGroupMember', 'Process', 'Registry', 'SecureFolder', 'SecurityPolicy', 'Service', 'UserRights')
     }
 
     It 'keeps the old name Get-ThemisProviders as an alias' {

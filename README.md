@@ -130,6 +130,7 @@ A policy is a JSON file with a `Meta` section and one array per rule type:
 | `FeatureRules` | `Feature` (such as `SMB1Protocol`), `State` (`Enabled`, `Disabled`) | Windows optional features. A feature this Windows does not include is `NotApplicable`. Needs elevation. |
 | `SecureFolderRules` | `Path` (absolute), `Sddl` (permissions, such as `D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)`), or `Ensure` (`Absent`) | Creates the folder with exactly those permissions (only the DACL is written). `Absent` gives it its parent's permissions back and removes it only if it is empty. |
 | `LocalGroupMemberRules` | `Group` (SID), `Member` (SID), `Ensure` (`Present`, `Absent`) | Direct membership of an account in a local group, such as `S-1-5-32-573` (Event Log Readers). SIDs, because group names depend on the Windows language. Reading works without elevation; changing needs it, and the account gets the new membership at its next sign-in. |
+| `EventLogRules` | `LogName`, `MaxSizeMB`, `Exact` | Maximum size of an event log, such as `Microsoft-Windows-PowerShell/Operational`. A larger log is compliant unless `Exact`. A log this Windows does not have is `NotApplicable`. Changing the size needs elevation. |
 | `CheckRules` | `Fact`, `Expected`, optional `Action` | Something that has to be done by hand (Secure Boot, BitLocker...). The fact comes from `-Facts`; a check that is not met is `Manual`, and Enforce never changes anything. |
 | `ProcessRules` | `Name`, `State` (`Absent`, `Present`) | `Absent` stops the process in Enforce mode. |
 

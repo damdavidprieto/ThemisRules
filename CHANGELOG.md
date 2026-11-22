@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-22
+
+### Added
+- **`EventLogRules`**: maximum size of an event log. A log that is too small overwrites its oldest events, so the
+  trace of an attack can be gone before anyone looks (the PowerShell logs default to 15 MB). Enforce needs
+  elevation and returns the exact old size as the restore rule.
+
 ## [1.5.0] - 2026-11-22
 
 ### Added

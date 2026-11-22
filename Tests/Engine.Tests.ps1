@@ -247,6 +247,50 @@ Describe 'LocalGroupMember provider' {
     }
 }
 
+Describe 'EventLog provider' {
+    BeforeEach {
+        Mock -ModuleName ThemisRules Test-ThemisElevated { $true }
+        $script:logSize = 15MB
+        Mock -ModuleName ThemisRules Get-ThemisEventLogSize { $script:logSize }
+        Mock -ModuleName ThemisRules Set-ThemisEventLogSize { $script:logSize = $Bytes; 'noise' }
+        $script:logRule = @{ ID = 'L'; Name = 'ps log'; LogName = 'Microsoft-Windows-PowerShell/Operational'; MaxSizeMB = 1024 }
+    }
+
+    It 'enlarges the log and records the exact old size to restore' {
+        $r = Invoke-ThemisRule -Type EventLog -Rule $script:logRule -Mode Enforce
+        $r.Status | Should -Be 'Fixed'
+        $script:logSize | Should -Be 1GB
+        $r.Previous[0].MaxSizeMB | Should -Be 15
+        $r.Previous[0].Exact | Should -BeTrue
+        $null = Invoke-ThemisRule -Type EventLog -Rule $r.Previous[0] -Mode Enforce
+        $script:logSize | Should -Be 15MB
+    }
+
+    It 'accepts a larger log unless Exact is set' {
+        $script:logSize = 2GB
+        (Invoke-ThemisRule -Type EventLog -Rule $script:logRule).Status | Should -Be 'Compliant'
+        $exact = $script:logRule.Clone(); $exact.Exact = $true
+        (Invoke-ThemisRule -Type EventLog -Rule $exact).Status | Should -Be 'Non-Compliant'
+    }
+
+    It 'is NotApplicable without the log, needs elevation to change it and refuses bad sizes' {
+        Mock -ModuleName ThemisRules Get-ThemisEventLogSize { $null }
+        (Invoke-ThemisRule -Type EventLog -Rule $script:logRule).Status | Should -Be 'NotApplicable'
+        Mock -ModuleName ThemisRules Get-ThemisEventLogSize { 15MB }
+        Mock -ModuleName ThemisRules Test-ThemisElevated { $false }
+        (Invoke-ThemisRule -Type EventLog -Rule $script:logRule -Mode Enforce).Status | Should -Be 'NeedsElevation'
+        $bad = $script:logRule.Clone(); $bad.MaxSizeMB = 0
+        (Invoke-ThemisRule -Type EventLog -Rule $bad).Status | Should -Be 'Error'
+    }
+}
+
+Describe 'EventLog on this machine' -Skip:(-not ($IsWindows -or $PSVersionTable.PSEdition -eq 'Desktop')) {
+    It 'reads the size of a real log and treats a missing one as absent' {
+        InModuleScope ThemisRules { Get-ThemisEventLogSize -LogName 'Application' } | Should -BeGreaterThan 0
+        InModuleScope ThemisRules { Get-ThemisEventLogSize -LogName 'Cassiel-No-Existe/Operational' } | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'LocalGroupMember on this machine' -Skip:(-not ($IsWindows -or $PSVersionTable.PSEdition -eq 'Desktop')) {
     It 'reads real local groups by SID' {
         $members = InModuleScope ThemisRules { Get-ThemisLocalGroupMemberSid -Group 'S-1-5-32-544' }
