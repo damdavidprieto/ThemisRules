@@ -50,6 +50,12 @@ function Restore-ThemisBackup {
                 return
             }
         }
+        # A backup that says what its content was and no longer matches it has been edited: never restore it.
+        $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($content.Meta -and $content.Meta.ContentHash -and (Get-ThemisBackupHash -Backup $content) -ne $content.Meta.ContentHash) {
+            Write-Error "[Themis] Not restored: $Path was changed after Themis saved it (its content does not match Meta.ContentHash)."
+            return
+        }
         if ($PSCmdlet.ShouldProcess($Path, 'Restore the values saved in this backup')) {
             Invoke-ThemisPolicy -PolicyPath $Path -Mode Enforce -Confirm:$false
         }

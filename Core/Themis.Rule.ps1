@@ -113,7 +113,7 @@ function Invoke-ThemisRuleCore {
         [hashtable]$Prior = @{}
     )
 
-    $result = [ordered]@{ Status = 'Unknown'; IsCompliant = $false; Reason = ''; Actual = $null; Data = $null; Previous = @(); Condition = $null; Restorable = $null }
+    $result = [ordered]@{ Status = 'Unknown'; IsCompliant = $false; Reason = ''; Actual = $null; Data = $null; Previous = @(); Condition = $null; Restorable = $null; RequiresRestart = $null; Verified = $null }
 
     $condition = Test-ThemisAppliesIf -Rule $Rule -Facts $Facts
     if ($condition) {
@@ -155,6 +155,22 @@ function Invoke-ThemisRuleCore {
     # A change that comes back without restore rules cannot be undone: say so instead of letting the caller
     # believe it can. Restorable is $true or $false for changes (Fixed, or a failed change that left restore
     # rules), and $null when nothing changed.
+    if ($Mode -eq 'Enforce' -and $result.Status -eq 'Fixed') {
+        # Whether the change needs a restart: the provider says so, or the rule does (RequiresRestart).
+        if ($res.Contains('RequiresRestart')) { $result.RequiresRestart = [bool]$res.RequiresRestart }
+        elseif ($Rule.RequiresRestart) { $result.RequiresRestart = $true }
+        else { $result.RequiresRestart = $false }
+        # Read it back: a change that a policy or a protection reverts at once is not really done.
+        $script:ThemisFacts = $Facts
+        try { $check = & $command -Rule $Rule -Mode 'Audit' }
+        catch { $check = $null }
+        finally { $script:ThemisFacts = @{} }
+        if ($check -isnot [System.Collections.IDictionary]) { $check = @($check | Where-Object { $_ -is [System.Collections.IDictionary] }) | Select-Object -Last 1 }
+        $result.Verified = [bool]($check -and $check['IsCompliant'])
+        if (-not $result.Verified) {
+            $result.Reason = "$($result.Reason) Reading it again does not show the change yet: it may need a restart, or a policy or protection may undo it.".Trim()
+        }
+    }
     if (@($result.Previous).Count) { $result.Restorable = $true }
     elseif ($Mode -eq 'Enforce' -and $result.Status -eq 'Fixed') {
         $result.Restorable = $false

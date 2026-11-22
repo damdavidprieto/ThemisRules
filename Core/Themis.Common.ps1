@@ -337,3 +337,24 @@ function Set-ThemisFirewallProfile {
     $parameters = @{ Name = $Name; ErrorAction = 'Stop'; $Setting = $Value }
     Set-NetFirewallProfile @parameters
 }
+
+function Get-ThemisEditDistance {
+    <#
+    .SYNOPSIS
+        Levenshtein distance between two words, for "did you mean" hints. Case-insensitive.
+    #>
+    [CmdletBinding()]
+    [OutputType([int])]
+    param([Parameter(Mandatory = $true)][string]$A, [Parameter(Mandatory = $true)][string]$B)
+    $a1 = $A.ToLowerInvariant(); $b1 = $B.ToLowerInvariant()
+    $prev = 0..$b1.Length
+    for ($i = 1; $i -le $a1.Length; $i++) {
+        $cur = @($i) + @(0) * $b1.Length
+        for ($j = 1; $j -le $b1.Length; $j++) {
+            $cost = if ($a1[$i - 1] -eq $b1[$j - 1]) { 0 } else { 1 }
+            $cur[$j] = [Math]::Min([Math]::Min($cur[$j - 1] + 1, $prev[$j] + 1), $prev[$j - 1] + $cost)
+        }
+        $prev = $cur
+    }
+    return $prev[$b1.Length]
+}

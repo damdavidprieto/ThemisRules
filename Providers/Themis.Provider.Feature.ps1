@@ -104,6 +104,8 @@ function Invoke-ThemisFeatureRule {
             $result.Status = 'Fixed'
             $result.IsCompliant = $true
             $result.Reason = "$name set to $($Rule.State) (it may need a restart)."
+            # Windows finishes adding or removing a feature when it restarts.
+            $result.RequiresRestart = $after -in 'EnablePending', 'DisablePending'
         }
         else {
             $result.Status = 'EnforceFailed'
