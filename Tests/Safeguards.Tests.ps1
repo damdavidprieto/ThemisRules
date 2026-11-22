@@ -93,6 +93,8 @@ Describe 'Test-ThemisPolicy and -Strict' {
 
 Describe 'Backup content hash' -Skip:(-not $IsWindows -and $PSVersionTable.PSEdition -eq 'Core') {
     It 'refuses to restore a backup that was edited after it was saved' {
+        # Without elevation: elevated (as in CI) the temporary folder is refused earlier, for being writable by users.
+        Mock -ModuleName ThemisRules Test-ThemisElevated { $false }
         New-Item -Path 'TestRegistry:\ThemisHash' -Force | Out-Null
         New-ItemProperty -Path 'TestRegistry:\ThemisHash' -Name 'H' -Value 1 -PropertyType DWord -Force | Out-Null
         $policy = New-TestPolicy -Path (Join-Path $TestDrive 'hash.json') -Content @{
