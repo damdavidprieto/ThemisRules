@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-22
+
+### Added
+- **`Restorable`** in the results of `Invoke-ThemisRule` and `Invoke-ThemisPolicy`: `True` when Enforce
+  returned restore rules, `False` when it changed the system and the provider returned none (with a warning),
+  `` when nothing changed. A caller that keeps its own history can tell the user a change cannot be
+  undone instead of finding out when it tries.
+
 ## [1.6.0] - 2026-11-22
 
 ### Added

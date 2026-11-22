@@ -28,6 +28,20 @@ Describe 'Invoke-ThemisRule' -Skip:(-not $IsWindows -and $PSVersionTable.PSEditi
         (Get-ItemProperty 'TestRegistry:\ThemisRule').Level | Should -Be 1
     }
 
+    It 'says whether a change can be undone' {
+        $rule = @{ ID = 'R1'; Name = 'Level'; Path = 'TestRegistry:\ThemisRule'; ValueName = 'Level'; Value = 2; Type = 'DWord' }
+        (Invoke-ThemisRule -Type Registry -Rule $rule).Restorable | Should -BeNullOrEmpty
+        (Invoke-ThemisRule -Type Registry -Rule $rule -Mode Enforce).Restorable | Should -BeTrue
+    }
+
+    It 'warns when a provider changes the system without returning restore rules' {
+        Mock -ModuleName ThemisRules Invoke-ThemisEventLogRule { [ordered]@{ Status = 'Fixed'; IsCompliant = $true; Reason = 'changed' } }
+        $r = Invoke-ThemisRule -Type EventLog -Rule @{ ID = 'L1'; Name = 'log'; LogName = 'Application'; MaxSizeMB = 64 } -Mode Enforce -WarningVariable warn -WarningAction SilentlyContinue
+        $r.Status | Should -Be 'Fixed'
+        $r.Restorable | Should -BeFalse
+        "$warn" | Should -Match 'cannot be undone'
+    }
+
     It 'refuses an unknown type' {
         { Invoke-ThemisRule -Type Nope -Rule @{ ID = 'X' } } | Should -Throw '*No provider*'
     }

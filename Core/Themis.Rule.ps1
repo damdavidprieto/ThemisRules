@@ -113,7 +113,7 @@ function Invoke-ThemisRuleCore {
         [hashtable]$Prior = @{}
     )
 
-    $result = [ordered]@{ Status = 'Unknown'; IsCompliant = $false; Reason = ''; Actual = $null; Data = $null; Previous = @(); Condition = $null }
+    $result = [ordered]@{ Status = 'Unknown'; IsCompliant = $false; Reason = ''; Actual = $null; Data = $null; Previous = @(); Condition = $null; Restorable = $null }
 
     $condition = Test-ThemisAppliesIf -Rule $Rule -Facts $Facts
     if ($condition) {
@@ -152,5 +152,13 @@ function Invoke-ThemisRuleCore {
 
     foreach ($key in 'Status', 'IsCompliant', 'Reason', 'Actual', 'Data') { if ($res.Contains($key)) { $result[$key] = $res[$key] } }
     if ($res.Contains('Previous')) { $result.Previous = ConvertTo-ThemisPreviousList $res.Previous }
+    # A change that comes back without restore rules cannot be undone: say so instead of letting the caller
+    # believe it can. Restorable is $true or $false for changes (Fixed, or a failed change that left restore
+    # rules), and $null when nothing changed.
+    if (@($result.Previous).Count) { $result.Restorable = $true }
+    elseif ($Mode -eq 'Enforce' -and $result.Status -eq 'Fixed') {
+        $result.Restorable = $false
+        Write-Warning "[Themis] $($Rule.ID) ($Type) was changed, but the provider returned no restore rules: the change cannot be undone."
+    }
     return [pscustomobject]$result
 }

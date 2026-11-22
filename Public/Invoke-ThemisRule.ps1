@@ -8,12 +8,14 @@ function Invoke-ThemisRule {
         Evaluates a single rule with the provider for -Type (Registry, Service, Feature,
         SecureFolder, AuditPolicy, SecurityPolicy, UserRights, FirewallProfile, Process or Check),
         the same way Invoke-ThemisPolicy does for each rule of a policy, and returns the result
-        with ID, Type, Name, Status, IsCompliant, Reason, Actual, Data, Previous and Condition.
+        with ID, Type, Name, Status, IsCompliant, Reason, Actual, Data, Previous, Condition and Restorable.
         Data holds what the provider read as structured values (for example the startup type and
         state of a service), so the caller can show it in its own words. Previous lists the
         restore rules for what Enforce changed: passing each of them back to Invoke-ThemisRule
         with -Mode Enforce puts the old values back, which is how Restore-ThemisBackup works.
-        Unlike Invoke-ThemisPolicy, it saves no backup: the caller keeps Previous.
+        Unlike Invoke-ThemisPolicy, it saves no backup: the caller keeps Previous. Restorable is $true when
+        there are restore rules, $false when Enforce changed the system and the provider returned none (it
+        also writes a warning), and $null when nothing changed.
         AppliesIf conditions are checked against -Facts. DependsOn uses -Prior, the results of
         earlier rules by ID. Enforce supports -WhatIf and -Confirm; a declined rule is only audited.
 
@@ -91,5 +93,6 @@ function Invoke-ThemisRule {
         Data        = $res.Data
         Previous    = @($res.Previous)
         Condition   = $res.Condition
+        Restorable  = $res.Restorable
     }
 }
