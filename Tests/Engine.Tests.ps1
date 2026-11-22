@@ -192,6 +192,55 @@ Describe 'Feature provider' {
     }
 }
 
+Describe 'LocalGroupMember provider' {
+    BeforeEach {
+        Mock -ModuleName ThemisRules Test-ThemisElevated { $true }
+        $script:groupMembers = @('S-1-5-21-1-2-3-500')
+        Mock -ModuleName ThemisRules Get-ThemisLocalGroupMemberSid { , [string[]]$script:groupMembers }
+        Mock -ModuleName ThemisRules Set-ThemisLocalGroupMember {
+            if ($Ensure -eq 'Present') { $script:groupMembers += $Member }
+            else { $script:groupMembers = @($script:groupMembers | Where-Object { $_ -ne $Member }) }
+        }
+        $script:groupRule = @{ ID = 'G'; Name = 'readers'; Group = 'S-1-5-32-573'; Member = 'S-1-5-21-1-2-3-1001' }
+    }
+
+    It 'adds the account and records how to remove it again' {
+        $r = Invoke-ThemisRule -Type LocalGroupMember -Rule $script:groupRule -Mode Enforce
+        $r.Status | Should -Be 'Fixed'
+        $script:groupMembers | Should -Contain 'S-1-5-21-1-2-3-1001'
+        $r.Previous[0].Ensure | Should -Be 'Absent'
+        $null = Invoke-ThemisRule -Type LocalGroupMember -Rule $r.Previous[0] -Mode Enforce
+        $script:groupMembers | Should -Not -Contain 'S-1-5-21-1-2-3-1001'
+    }
+
+    It 'reads membership without elevation, but needs it to change it' {
+        Mock -ModuleName ThemisRules Test-ThemisElevated { $false }
+        (Invoke-ThemisRule -Type LocalGroupMember -Rule $script:groupRule).Status | Should -Be 'Non-Compliant'
+        (Invoke-ThemisRule -Type LocalGroupMember -Rule $script:groupRule -Mode Enforce).Status | Should -Be 'NeedsElevation'
+        Should -Invoke -ModuleName ThemisRules Set-ThemisLocalGroupMember -Times 0
+    }
+
+    It 'is Compliant for Absent when the account is not a member, and NotApplicable without the group' {
+        $absent = $script:groupRule.Clone(); $absent.Ensure = 'Absent'
+        (Invoke-ThemisRule -Type LocalGroupMember -Rule $absent).Status | Should -Be 'Compliant'
+        Mock -ModuleName ThemisRules Get-ThemisLocalGroupMemberSid { $null }
+        (Invoke-ThemisRule -Type LocalGroupMember -Rule $script:groupRule).Status | Should -Be 'NotApplicable'
+    }
+
+    It 'refuses names instead of SIDs' {
+        $byName = $script:groupRule.Clone(); $byName.Group = 'Event Log Readers'
+        (Invoke-ThemisRule -Type LocalGroupMember -Rule $byName).Status | Should -Be 'Error'
+    }
+}
+
+Describe 'LocalGroupMember on this machine' -Skip:(-not ($IsWindows -or $PSVersionTable.PSEdition -eq 'Desktop')) {
+    It 'reads real local groups by SID' {
+        $members = InModuleScope ThemisRules { Get-ThemisLocalGroupMemberSid -Group 'S-1-5-32-544' }
+        $members | Should -Not -BeNullOrEmpty
+        InModuleScope ThemisRules { Get-ThemisLocalGroupMemberSid -Group 'S-1-5-32-999999' } | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'SecureFolder provider' -Skip:(-not ($IsWindows -or $PSVersionTable.PSEdition -eq 'Desktop')) {
     It 'creates the folder with the permissions and removes it again on restore' {
         $me = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value

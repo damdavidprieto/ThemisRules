@@ -31,7 +31,7 @@ Describe 'ThemisRules manifest' {
     }
 
     It 'registers the ten providers' {
-        (Get-ThemisProvider).Type | Should -Be @('AuditPolicy', 'Check', 'Feature', 'FirewallProfile', 'Process', 'Registry', 'SecureFolder', 'SecurityPolicy', 'Service', 'UserRights')
+        (Get-ThemisProvider).Type | Should -Be @('AuditPolicy', 'Check', 'Feature', 'FirewallProfile', 'LocalGroupMember', 'Process', 'Registry', 'SecureFolder', 'SecurityPolicy', 'Service', 'UserRights')
     }
 
     It 'keeps the old name Get-ThemisProviders as an alias' {
