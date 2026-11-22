@@ -16,8 +16,9 @@ Describe 'ThemisRules manifest' {
     }
 
     It 'keeps providers and engine internals private' {
+        # Invoke-ThemisRule is public; the providers (Invoke-Themis<Type>Rule) are not.
         Get-Command -Module ThemisRules -Name 'Invoke-Themis*Rule', 'Initialize-ThemisProviders' -ErrorAction SilentlyContinue |
-            Should -BeNullOrEmpty
+            Where-Object Name -NE 'Invoke-ThemisRule' | Should -BeNullOrEmpty
     }
 
     It 'does not load extra modules into the session' {
@@ -29,8 +30,8 @@ Describe 'ThemisRules manifest' {
         $manifest.PrivateData.PSData.ProjectUri | Should -Be 'https://github.com/damdavidprieto/ThemisRules'
     }
 
-    It 'registers the seven providers' {
-        (Get-ThemisProvider).Type | Should -Be @('AuditPolicy', 'FirewallProfile', 'Process', 'Registry', 'SecurityPolicy', 'Service', 'UserRights')
+    It 'registers the ten providers' {
+        (Get-ThemisProvider).Type | Should -Be @('AuditPolicy', 'Check', 'Feature', 'FirewallProfile', 'Process', 'Registry', 'SecureFolder', 'SecurityPolicy', 'Service', 'UserRights')
     }
 
     It 'keeps the old name Get-ThemisProviders as an alias' {

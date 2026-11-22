@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-22
+
+ThemisRules can now be the engine of a hardening tool that keeps its own history and user interface,
+such as Cassiel.
+
+### Added
+- **`Invoke-ThemisRule`**: evaluates or applies a single rule and returns, besides the usual result,
+  `Data` (what was read, as structured values), `Previous` (restore rules for what Enforce changed) and
+  `Condition` (the AppliesIf condition that was not met). It saves no backup: the caller keeps `Previous`.
+  `-KeepReadCache` reuses the exported security and audit policy across calls of one audit.
+- **`-Facts`, `AppliesIf` and `DependsOn`**: rules can depend on facts about the machine (values or
+  numeric comparisons) and on earlier rules. New statuses `NotApplicable` and `Skipped`.
+- **`FeatureRules`** (Windows optional features), **`SecureFolderRules`** (a folder with exact
+  permissions; undoing removes it only if empty) and **`CheckRules`** (manual actions, status `Manual`).
+- **Registry**: a `*` in the last path segment checks every matching subkey; `Comparison = In`;
+  `WriteValue`; `Ensure = Absent` with `MatchValue`; `ExpandString` values kept unexpanded; undoing a
+  change removes the key it created when it is left empty.
+- **Services**: `AllowStricter` (Disabled meets Manual); protected services are changed with `sc.exe`
+  when `Set-Service` is refused.
+- **Firewall**: `AllowInboundRules`, `AllowLocalFirewallRules` and `AllowUnicastResponseToMulticast`.
+- Status `NeedsElevation` for values that can only be read as administrator.
+
+### Changed
+- Audit policy, security policy and user rights rules report `NeedsElevation` instead of `Error`
+  without elevation, and so do optional features and unreadable registry keys.
+- DWORD and QWORD registry values are compared as unsigned numbers: `0xFFFFFFFF` is 4294967295, not -1.
+- Enforcing a service `StartupType` of `Disabled` also stops the service, unless the rule sets `State`.
+- Firewall backups record the local setting, so one that was `NotConfigured` goes back to that.
+- Registry rules are read back after Enforce: a value that Group Policy puts back is `EnforceFailed`.
+- Previous values (backups) cover exactly what changed: a write that fails changes nothing and adds
+  nothing to undo, and a registry rule that fails halfway returns the keys it did change.
+
 ### Security
 - **Windows tools are called by full path.** `auditpol`, `secedit` and `sc` were run by bare name, so
   PowerShell looked in the current folder and the `PATH` first; in an elevated session a program planted

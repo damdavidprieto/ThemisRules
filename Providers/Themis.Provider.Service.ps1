@@ -1,6 +1,46 @@
 # Themis Service Provider
 # Handles 'Service' type rules.
 # Actions supported: State (Running/Stopped), StartupType (Automatic/Manual/Disabled), Action = Absent.
+# AllowStricter = $true accepts a startup type stricter than StartupType (Disabled meets Manual).
+# Enforcing StartupType = Disabled also stops the service, unless the rule sets State.
+
+$script:ThemisStartupRank = @{ Disabled = 0; Manual = 1; Automatic = 2; AutomaticDelayedStart = 2; Boot = 2; System = 2 }
+
+function Test-ThemisStartupType {
+    <#
+    .SYNOPSIS
+        Whether a service's startup type meets the rule (exactly, or stricter with AllowStricter).
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param([string]$Actual, [string]$Wanted, [bool]$AllowStricter)
+
+    # PowerShell accepts unambiguous abbreviations such as 'Auto' for enum values; so does this check.
+    $names = 'Disabled', 'Manual', 'Automatic', 'AutomaticDelayedStart', 'Boot', 'System'
+    $resolved = @($names | Where-Object { $_ -eq $Wanted })
+    if (-not $resolved) { $resolved = @($names | Where-Object { $_ -like "$Wanted*" }) }
+    if ($resolved.Count -ne 1) { throw "Unknown StartupType '$Wanted'. Use Automatic, Manual or Disabled." }
+    $Wanted = $resolved[0]
+    if ($AllowStricter) { return $script:ThemisStartupRank[$Actual] -le $script:ThemisStartupRank[$Wanted] }
+    return $Actual -eq $Wanted
+}
+
+function Set-ThemisServiceStartup {
+    <#
+    .SYNOPSIS
+        Sets a startup type with Set-Service, or with sc.exe for protected services that refuse it.
+    #>
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param([Parameter(Mandatory = $true)][string]$Name, [Parameter(Mandatory = $true)][string]$StartupType)
+
+    if (-not $PSCmdlet.ShouldProcess($Name, "Set startup type to $StartupType")) { return }
+    try { Set-Service -Name $Name -StartupType $StartupType -ErrorAction Stop }
+    catch {
+        $mode = switch -Wildcard ($StartupType) { 'Disabled' { 'disabled' } 'Manual' { 'demand' } 'Auto*' { 'auto' } default { throw } }
+        $output = & (Get-ThemisSystemTool 'sc.exe') config $Name start= $mode 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "Windows refused to change the service ${Name}: $output" }
+    }
+}
 
 function Invoke-ThemisServiceRule {
     [CmdletBinding()]
@@ -41,19 +81,23 @@ function Invoke-ThemisServiceRule {
                 $result.IsCompliant = $true
                 $result.Reason = "Service is not installed."
                 $result.Actual = "Missing"
+                $result.Data = @{ Missing = $true }
                 return $result
             }
             else {
                 $result.Status = "MissingService"
                 $result.Reason = "Required service '$($Rule.Name)' not installed."
                 $result.Actual = "Missing"
+                $result.Data = @{ Missing = $true }
                 # Cannot enforce "Install" easily, so we return failed.
                 return $result
             }
         }
 
         $result.Actual = "$($svc.Status) ($($svc.StartType))"
+        $result.Data = @{ Missing = $false; Status = "$($svc.Status)"; StartType = "$($svc.StartType)" }
         $reasons = @()
+        $allowStricter = [bool]$Rule.AllowStricter
 
         # What to restore. Only states and startup types a rule can express are recorded; a deleted
         # service cannot be brought back, so Action = Absent leaves nothing to restore.
@@ -65,13 +109,17 @@ function Invoke-ThemisServiceRule {
         $changed = $false
         try {
             if ($Rule.StartupType) {
-                if ($svc.StartType -ne $Rule.StartupType) {
+                if (-not (Test-ThemisStartupType -Actual "$($svc.StartType)" -Wanted "$($Rule.StartupType)" -AllowStricter $allowStricter)) {
                     $reasons += "Startup mismatch (Expected: $($Rule.StartupType), Actual: $($svc.StartType))."
 
                     if ($Mode -eq "Enforce") {
                         $changed = $true
-                        Set-Service -Name $svc.Name -StartupType $Rule.StartupType -ErrorAction Stop
+                        Set-ThemisServiceStartup -Name $svc.Name -StartupType "$($Rule.StartupType)" -Confirm:$false
                         $reasons += "[Fixed] Startup type set to $($Rule.StartupType)."
+                        # A disabled service that keeps running is still exposed: stop it, unless the rule says otherwise.
+                        if ("$($Rule.StartupType)" -eq 'Disabled' -and -not $Rule.State -and "$($svc.Status)" -eq 'Running') {
+                            Stop-Service -Name $svc.Name -Force -ErrorAction SilentlyContinue
+                        }
                     }
                 }
             }
@@ -125,7 +173,7 @@ function Invoke-ThemisServiceRule {
                     if ($changed -and $previous.Count -gt 1) { $result.Previous = $previous }
                     # Read the service again instead of assuming the change worked.
                     $svc.Refresh()
-                    $startupOk = -not $Rule.StartupType -or $svc.StartType -eq $Rule.StartupType
+                    $startupOk = -not $Rule.StartupType -or (Test-ThemisStartupType -Actual "$($svc.StartType)" -Wanted "$($Rule.StartupType)" -AllowStricter $allowStricter)
                     $stateOk = -not $Rule.State -or $svc.Status -eq $Rule.State
                     if ($startupOk -and $stateOk) {
                         $result.IsCompliant = $true
@@ -154,6 +202,7 @@ function Invoke-ThemisServiceRule {
         if ($Rule.Action -ne 'Absent' -or $Mode -ne 'Enforce') {
             $svc.Refresh()
             $result.Actual = "$($svc.Status) ($($svc.StartType))"
+            $result.Data = @{ Missing = $false; Status = "$($svc.Status)"; StartType = "$($svc.StartType)" }
         }
         else { $result.Actual = 'Deleted' }
 

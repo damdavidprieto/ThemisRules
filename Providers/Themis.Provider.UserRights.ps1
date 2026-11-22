@@ -40,7 +40,7 @@ function Invoke-ThemisUserRightsRule {
         return $result
     }
     if (-not (Test-ThemisElevated)) {
-        $result.Status = 'Error'
+        $result.Status = 'NeedsElevation'
         $result.Reason = 'Reading user rights requires an elevated session (Run as administrator).'
         return $result
     }
@@ -81,9 +81,9 @@ function Invoke-ThemisUserRightsRule {
                 'Excludes' { $current | Where-Object { $_ -notin $wanted } }
             }
             $target = @($target | Sort-Object -Unique)
-            # Recorded before the change, so the backup covers it even if the read-back fails.
-            $result.Previous = [ordered]@{ Right = $right; Principals = @($current); Comparison = 'Equal' }
             Set-ThemisUserRight -Right $right -Principals $target -Confirm:$false
+            # Recorded once the change is made (a failed write changes nothing), before the read-back.
+            $result.Previous = [ordered]@{ Right = $right; Principals = @($current); Comparison = 'Equal' }
 
             $after = @((Get-ThemisUserRight)[$right])
             if ((@($after | Sort-Object) -join ',') -eq ($target -join ',')) {

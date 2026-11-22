@@ -32,7 +32,7 @@ function Invoke-ThemisAuditPolicyRule {
         return $result
     }
     if (-not (Test-ThemisElevated)) {
-        $result.Status = 'Error'
+        $result.Status = 'NeedsElevation'
         $result.Reason = 'Reading the audit policy requires an elevated session (Run as administrator).'
         return $result
     }
@@ -63,9 +63,9 @@ function Invoke-ThemisAuditPolicyRule {
 
         if ($Mode -eq 'Enforce') {
             $target = if ($Rule.Exact -or $wanted -eq 0) { $wanted } else { $current -bor $wanted }
-            # Recorded before the change, so the backup covers it even if the read-back fails.
-            $result.Previous = [ordered]@{ Subcategory = $subcategory; Setting = $names[$current]; Exact = $true }
             Set-ThemisAuditPolicySetting -Subcategory $subcategory -Success (($target -band 1) -eq 1) -Failure (($target -band 2) -eq 2) -Confirm:$false
+            # Recorded once the change is made (a failed write changes nothing), before the read-back.
+            $result.Previous = [ordered]@{ Subcategory = $subcategory; Setting = $names[$current]; Exact = $true }
             $after = [int](Get-ThemisAuditPolicySetting)[$subcategory]
             if ($after -eq $target) {
                 $result.Status = 'Fixed'

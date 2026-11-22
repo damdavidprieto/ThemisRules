@@ -13,6 +13,9 @@ $script:ThemisFirewallSettings = @{
     LogBlocked            = 'True', 'False'
     LogAllowed            = 'True', 'False'
     LogMaxSizeKilobytes   = $null
+    AllowInboundRules     = 'True', 'False'
+    AllowLocalFirewallRules = 'True', 'False'
+    AllowUnicastResponseToMulticast = 'True', 'False'
 }
 
 function Invoke-ThemisFirewallProfileRule {
@@ -42,12 +45,15 @@ function Invoke-ThemisFirewallProfileRule {
     }
     $allowed = $script:ThemisFirewallSettings[$setting]
     $number = 0
-    if ($allowed -and "$($Rule.Value)" -notin $allowed) {
+    # NotConfigured (used by backups) puts back a local setting that was not set, and is compared with
+    # the local settings instead of the effective ones.
+    $notConfigured = "$($Rule.Value)" -eq 'NotConfigured'
+    if ($allowed -and -not $notConfigured -and "$($Rule.Value)" -notin $allowed) {
         $result.Status = 'Error'
         $result.Reason = "Value for $setting must be $($allowed -join ' or '): '$($Rule.Value)'."
         return $result
     }
-    if (-not $allowed -and -not [int]::TryParse("$($Rule.Value)", [ref]$number)) {
+    if (-not $allowed -and -not $notConfigured -and -not [int]::TryParse("$($Rule.Value)", [ref]$number)) {
         $result.Status = 'Error'
         $result.Reason = "Value for $setting must be a whole number: '$($Rule.Value)'."
         return $result
@@ -59,8 +65,9 @@ function Invoke-ThemisFirewallProfileRule {
     }
 
     try {
-        $current = "$((Get-ThemisFirewallProfile -Name $profileName).$setting)"
+        $current = "$((Get-ThemisFirewallProfile -Name $profileName -Local:$notConfigured).$setting)"
         $result.Actual = $current
+        $result.Data = @{ Profile = $profileName; Setting = $setting; Value = $current }
         $check = Test-ThemisValue -Actual $current -Rule $Rule
 
         if ($check.Match) {
@@ -74,12 +81,14 @@ function Invoke-ThemisFirewallProfileRule {
         $result.Reason = "$profileName profile: $setting is $current; required: $($check.Expected)."
 
         if ($Mode -eq 'Enforce') {
-            $newValue = if ($allowed) { "$($Rule.Value)" } else { [int]$Rule.Value }
-            # Recorded before the change, so the backup covers it even if the read-back fails.
-            $oldValue = if ($allowed) { $current } else { [int]$current }
-            $result.Previous = [ordered]@{ Profile = $profileName; Setting = $setting; Value = $oldValue }
+            $newValue = if ($allowed -or $notConfigured) { "$($Rule.Value)" } else { [int]$Rule.Value }
+            # The local value is recorded (once the change is made, before the read-back), not the effective
+            # one, so a setting that was NotConfigured goes back to that.
+            $local = "$((Get-ThemisFirewallProfile -Name $profileName -Local).$setting)"
+            $oldValue = if ($local -eq 'NotConfigured' -or $allowed) { $local } else { [int]$local }
             Set-ThemisFirewallProfile -Name $profileName -Setting $setting -Value $newValue -Confirm:$false
-            $after = "$((Get-ThemisFirewallProfile -Name $profileName).$setting)"
+            $result.Previous = [ordered]@{ Profile = $profileName; Setting = $setting; Value = $oldValue }
+            $after = "$((Get-ThemisFirewallProfile -Name $profileName -Local:$notConfigured).$setting)"
             if ((Test-ThemisValue -Actual $after -Rule $Rule).Match) {
                 $result.Status = 'Fixed'
                 $result.IsCompliant = $true

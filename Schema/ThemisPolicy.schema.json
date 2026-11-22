@@ -90,12 +90,12 @@
                     "Type": {
                         "type": "string",
                         "enum": [
-                            "String",
-                            "ExpandString",
                             "Binary",
                             "DWord",
+                            "ExpandString",
                             "MultiString",
-                            "QWord"
+                            "QWord",
+                            "String"
                         ]
                     },
                     "Default": {
@@ -119,16 +119,36 @@
                             "Equal",
                             "AtLeast",
                             "AtMost",
-                            "Between"
-                        ],
-                        "default": "Equal",
-                        "description": "How the actual value is compared. AtLeast, AtMost and Between need numbers; Between uses Min and Max. Enforce always writes Value."
+                            "Between",
+                            "In"
+                        ]
                     },
                     "Min": {
                         "type": "number"
                     },
                     "Max": {
                         "type": "number"
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts: a value, or {\"lt\"|\"le\"|\"gt\"|\"ge\"|\"eq\"|\"ne\": number}."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "WriteValue": {
+                        "description": "What Enforce writes when it differs from Value (needed for Between and In)."
+                    },
+                    "MatchValue": {
+                        "description": "With Ensure = Absent: only this value is removed."
+                    },
+                    "RemoveKeyIfEmpty": {
+                        "type": "boolean",
+                        "description": "In backups: remove the key when it is left empty."
                     }
                 }
             }
@@ -183,6 +203,21 @@
                             "Absent"
                         ],
                         "description": "Absent deletes the service in Enforce mode."
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts: a value, or {\"lt\"|\"le\"|\"gt\"|\"ge\"|\"eq\"|\"ne\": number}."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "AllowStricter": {
+                        "type": "boolean",
+                        "description": "Accept a stricter startup type (Disabled meets Manual)."
                     }
                 }
             }
@@ -223,6 +258,17 @@
                             "Absent",
                             "Present"
                         ]
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts: a value, or {\"lt\"|\"le\"|\"gt\"|\"ge\"|\"eq\"|\"ne\": number}."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
                     }
                 }
             }
@@ -275,6 +321,17 @@
                     "Exact": {
                         "type": "boolean",
                         "description": "Require exactly this setting instead of at least it. Used by backups."
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts: a value, or {\"lt\"|\"le\"|\"gt\"|\"ge\"|\"eq\"|\"ne\": number}."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
                     }
                 }
             }
@@ -331,6 +388,17 @@
                             "Excludes"
                         ],
                         "default": "Equal"
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts: a value, or {\"lt\"|\"le\"|\"gt\"|\"ge\"|\"eq\"|\"ne\": number}."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
                     }
                 }
             }
@@ -406,6 +474,17 @@
                     },
                     "Max": {
                         "type": "number"
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts: a value, or {\"lt\"|\"le\"|\"gt\"|\"ge\"|\"eq\"|\"ne\": number}."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
                     }
                 }
             }
@@ -459,7 +538,10 @@
                             "NotifyOnListen",
                             "LogBlocked",
                             "LogAllowed",
-                            "LogMaxSizeKilobytes"
+                            "LogMaxSizeKilobytes",
+                            "AllowInboundRules",
+                            "AllowLocalFirewallRules",
+                            "AllowUnicastResponseToMulticast"
                         ]
                     },
                     "Value": {
@@ -484,6 +566,180 @@
                     },
                     "Max": {
                         "type": "number"
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts: a value, or {\"lt\"|\"le\"|\"gt\"|\"ge\"|\"eq\"|\"ne\": number}."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    }
+                }
+            }
+        },
+        "FeatureRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name",
+                    "Feature",
+                    "State"
+                ],
+                "properties": {
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts: a value, or {\"lt\"|\"le\"|\"gt\"|\"ge\"|\"eq\"|\"ne\": number}."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "Feature": {
+                        "type": "string"
+                    },
+                    "State": {
+                        "type": "string",
+                        "enum": [
+                            "Enabled",
+                            "Disabled"
+                        ]
+                    }
+                }
+            }
+        },
+        "SecureFolderRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name",
+                    "Path"
+                ],
+                "properties": {
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts: a value, or {\"lt\"|\"le\"|\"gt\"|\"ge\"|\"eq\"|\"ne\": number}."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "Path": {
+                        "type": "string"
+                    },
+                    "Sddl": {
+                        "type": "string"
+                    },
+                    "Ensure": {
+                        "type": "string",
+                        "enum": [
+                            "Absent"
+                        ]
+                    }
+                }
+            }
+        },
+        "CheckRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name",
+                    "Fact",
+                    "Expected"
+                ],
+                "properties": {
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts: a value, or {\"lt\"|\"le\"|\"gt\"|\"ge\"|\"eq\"|\"ne\": number}."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "Fact": {
+                        "type": "string"
+                    },
+                    "Expected": {},
+                    "Action": {
+                        "type": "string"
                     }
                 }
             }
