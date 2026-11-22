@@ -56,6 +56,9 @@ function Invoke-ThemisPolicy {
         processes and deleted services cannot be restored.
         A policy runs with your permissions: only use policies from a source you trust.
         Sections without a provider are skipped with a warning.
+        A rule with AppliesIf is NotApplicable when its conditions on -Facts are not met, and a rule
+        with DependsOn is Skipped when a rule it depends on (evaluated earlier) is not applicable,
+        failed, or in Enforce mode is still not compliant.
 
     .PARAMETER PolicyPath
         Path to the policy JSON file.
@@ -78,6 +81,10 @@ function Invoke-ThemisPolicy {
 
     .PARAMETER NoBackup
         Do not write a backup in Enforce mode.
+
+    .PARAMETER Facts
+        Facts about the machine (a hashtable or an object), used by the AppliesIf conditions of the
+        rules and by Check rules, for example @{ HasPrinters = $false; OSBuild = 26100 }.
 
     .EXAMPLE
         Invoke-ThemisPolicy -Baseline Windows-Workstation -MacroLevel L1
@@ -124,7 +131,9 @@ function Invoke-ThemisPolicy {
 
         [string]$BackupPath = (Get-ThemisBackupFolder),
 
-        [switch]$NoBackup
+        [switch]$NoBackup,
+
+        [object]$Facts = @{}
     )
 
     # 1. Initialize
@@ -201,12 +210,12 @@ function Invoke-ThemisPolicy {
     $results = @()
     $backupRules = [System.Collections.Generic.List[object]]::new()
     $backupFile = $null
+    $prior = @{}
 
     # 3. Execution
 
     foreach ($rule in $allRules) {
         $type = $rule._ProviderType
-        $cmdlet = $script:ProviderCache[$type]
 
         Write-Verbose "Processing Rule: $($rule.ID) ($type)"
 
@@ -218,7 +227,8 @@ function Invoke-ThemisPolicy {
         }
 
         try {
-            $res = & $cmdlet -Rule $rule -Mode $ruleMode
+            $res = Invoke-ThemisRuleCore -Type $type -Rule $rule -Mode $ruleMode -Facts $Facts -Prior $prior
+            $prior["$($rule.ID)"] = $res
 
             # Enrich Result with Enhanced Metadata
             $obj = [PSCustomObject]@{
@@ -237,18 +247,17 @@ function Invoke-ThemisPolicy {
             }
             $results += $obj
 
-            if ($res.Contains('Previous') -and $res.Previous) {
+            foreach ($previous in $res.Previous) {
                 $restore = [ordered]@{ ID = $rule.ID }
-                if (-not $res.Previous.Contains('Name')) { $restore.Name = "Restore: $($rule.Name)" }
-                foreach ($key in $res.Previous.Keys) { $restore[$key] = $res.Previous[$key] }
+                if (-not $previous.Contains('Name')) { $restore.Name = "Restore: $($rule.Name)" }
+                foreach ($key in $previous.Keys) { $restore[$key] = $previous[$key] }
                 $backupRules.Add([pscustomobject]@{ Section = "${type}Rules"; Rule = $restore; Result = $obj })
-
+            }
+            if (@($res.Previous).Count -and -not $NoBackup) {
                 # The backup is written after every change, not at the end: if the run stops
                 # halfway (error, Ctrl+C, power cut), the values changed so far can still be restored.
-                if (-not $NoBackup) {
-                    $backupFile = Save-ThemisBackup -Folder $BackupPath -PolicyName $policyName -PolicyPath $PolicyPath -Entries $backupRules -File $backupFile -Confirm:$false
-                    foreach ($entry in $backupRules) { $entry.Result.Backup = $backupFile }
-                }
+                $backupFile = Save-ThemisBackup -Folder $BackupPath -PolicyName $policyName -PolicyPath $PolicyPath -Entries $backupRules -File $backupFile -Confirm:$false
+                foreach ($entry in $backupRules) { $entry.Result.Backup = $backupFile }
             }
 
         }

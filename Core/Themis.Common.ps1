@@ -41,11 +41,11 @@ function Test-ThemisElevated {
 function Test-ThemisValue {
     <#
     .SYNOPSIS
-        Compares an actual value with the rule: Equal (default), AtLeast, AtMost or Between.
+        Compares an actual value with the rule: Equal (default), AtLeast, AtMost, Between or In.
     .DESCRIPTION
         Returns @{ Match = <bool>; Expected = <text for the report> }. Numeric comparisons
-        need both values to be numbers; Between uses the rule's Min and Max. Text values are
-        compared without case.
+        need both values to be numbers; Between uses the rule's Min and Max, and In a list in
+        Value. Text values are compared without case.
     #>
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -80,7 +80,17 @@ function Test-ThemisValue {
                 $actualNumber -ge $min -and $actualNumber -le $max
             return @{ Match = [bool]$ok; Expected = "between $($Rule.Min) and $($Rule.Max)" }
         }
-        default { throw "Unknown Comparison '$comparison'. Use Equal, AtLeast, AtMost or Between." }
+        'In' {
+            # One of the values in the list; numbers compared as numbers, text without case.
+            $ok = $false
+            foreach ($candidate in @($Rule.Value)) {
+                $n = 0.0
+                if ($actualIsNumber -and [double]::TryParse([string]$candidate, [ref]$n)) { if ($actualNumber -eq $n) { $ok = $true; break } }
+                elseif ("$Actual" -eq "$candidate") { $ok = $true; break }
+            }
+            return @{ Match = $ok; Expected = "one of $(@($Rule.Value) -join ', ')" }
+        }
+        default { throw "Unknown Comparison '$comparison'. Use Equal, AtLeast, AtMost, Between or In." }
     }
 }
 
@@ -303,9 +313,11 @@ function Get-ThemisFirewallProfile {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseCompatibleCommands', '', Justification = 'NetSecurity is a Windows module; the provider reports an error where it is missing.')]
     [CmdletBinding()]
     [OutputType([object])]
-    param([Parameter(Mandatory = $true)][ValidateSet('Domain', 'Private', 'Public')][string]$Name)
+    param([Parameter(Mandatory = $true)][ValidateSet('Domain', 'Private', 'Public')][string]$Name, [switch]$Local)
 
-    return (Get-NetFirewallProfile -Name $Name -PolicyStore ActiveStore -ErrorAction Stop)
+    # -Local reads the local (persistent) settings, where a value can be NotConfigured.
+    $store = if ($Local) { 'PersistentStore' } else { 'ActiveStore' }
+    return (Get-NetFirewallProfile -Name $Name -PolicyStore $store -ErrorAction Stop)
 }
 
 function Set-ThemisFirewallProfile {

@@ -121,17 +121,53 @@ A policy is a JSON file with a `Meta` section and one array per rule type:
 
 | Section | Fields | Notes |
 |---|---|---|
-| `RegistryRules` | `Path`, `ValueName`, `Value`, `Type` (`DWord`, `QWord`, `String`, `MultiString`), optional `Default` | `Path` must be a registry path. |
+| `RegistryRules` | `Path`, `ValueName`, `Value`, `Type` (`DWord`, `QWord`, `String`, `ExpandString`, `MultiString`, `Binary`), optional `Default`, `WriteValue`, `Ensure` (`Absent`) with `MatchValue` | `Path` must be a registry path; a `*` in its last segment checks every matching subkey (none is `NotApplicable`). `WriteValue` is what Enforce writes when it differs from `Value` (needed for `Between` and `In`). `Ensure = Absent` removes the value, or with `MatchValue` only that value. DWORD and QWORD values are compared as unsigned numbers. |
 | `AuditPolicyRules` | `Subcategory` (GUID), `Setting` (`Success`, `Failure`, `SuccessAndFailure`, `NoAuditing`) | GUIDs, because subcategory names depend on the Windows language: `auditpol /list /subcategory:* /v`. Auditing more than required is compliant. |
 | `UserRightsRules` | `Right` (such as `SeDebugPrivilege`), `Principals` (SIDs), `Comparison` (`Equal`, `Includes`, `Excludes`) | SIDs, because account names depend on the Windows language: `S-1-5-32-544` is Administrators. `Equal` with no principals means nobody. |
 | `SecurityPolicyRules` | `Key`, `Value` (whole number) | `[System Access]` keys of the local security policy: password and lockout settings, Guest and Administrator accounts, anonymous name lookup. |
-| `FirewallProfileRules` | `Profile` (`Domain`, `Private`, `Public`), `Setting`, `Value` | Settings: `Enabled`, `DefaultInboundAction`, `DefaultOutboundAction`, `NotifyOnListen`, `LogBlocked`, `LogAllowed`, `LogMaxSizeKilobytes`. |
-| `ServiceRules` | `Name` and any of `State` (`Running`, `Stopped`), `StartupType` (`Automatic`, `Manual`, `Disabled`), `Action` (`Absent`) | A service that is not installed meets rules that want it stopped or disabled. `Absent` deletes the service in Enforce mode. |
+| `FirewallProfileRules` | `Profile` (`Domain`, `Private`, `Public`), `Setting`, `Value` | Settings: `Enabled`, `DefaultInboundAction`, `DefaultOutboundAction`, `AllowInboundRules`, `AllowLocalFirewallRules`, `AllowUnicastResponseToMulticast`, `NotifyOnListen`, `LogBlocked`, `LogAllowed`, `LogMaxSizeKilobytes`. Backups keep `NotConfigured` for settings that were not set locally. |
+| `ServiceRules` | `Name` and any of `State` (`Running`, `Stopped`), `StartupType` (`Automatic`, `Manual`, `Disabled`), `AllowStricter`, `Action` (`Absent`) | A service that is not installed meets rules that want it stopped or disabled. `AllowStricter` accepts a stricter startup type (`Disabled` meets `Manual`). Enforcing `Disabled` also stops the service unless the rule sets `State`; protected services that refuse `Set-Service` are changed with `sc.exe`. `Absent` deletes the service in Enforce mode. |
+| `FeatureRules` | `Feature` (such as `SMB1Protocol`), `State` (`Enabled`, `Disabled`) | Windows optional features. A feature this Windows does not include is `NotApplicable`. Needs elevation. |
+| `SecureFolderRules` | `Path` (absolute), `Sddl` (permissions, such as `D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)`), or `Ensure` (`Absent`) | Creates the folder with exactly those permissions (only the DACL is written). `Absent` gives it its parent's permissions back and removes it only if it is empty. |
+| `CheckRules` | `Fact`, `Expected`, optional `Action` | Something that has to be done by hand (Secure Boot, BitLocker...). The fact comes from `-Facts`; a check that is not met is `Manual`, and Enforce never changes anything. |
 | `ProcessRules` | `Name`, `State` (`Absent`, `Present`) | `Absent` stops the process in Enforce mode. |
 
-Every rule takes `ID`, `Name` and optionally `MacroLevel` (`L1`-`L5`) and `Description`. Numeric
-values can use `Comparison`: `Equal` (default), `AtLeast`, `AtMost` or `Between` (with `Min` and
-`Max`); Enforce writes `Value`. The schema is in
+Every rule takes `ID`, `Name` and optionally `MacroLevel` (`L1`-`L5`) and `Description`. Values can
+use `Comparison`: `Equal` (default), `AtLeast`, `AtMost`, `Between` (with `Min` and `Max`) or `In`
+(`Value` is a list); Enforce writes `Value`, or `WriteValue` when given.
+
+### Conditions and dependencies
+
+Any rule can take `AppliesIf`, conditions on facts about the machine that you pass with `-Facts`, and
+`DependsOn`, the IDs of rules earlier in the policy:
+
+```json
+{ "ID": "SVC-2", "Name": "Spooler", "StartupType": "Disabled",
+  "AppliesIf": { "HasPrinters": false, "OSBuild": { "ge": 22000 } } },
+{ "ID": "REG-9", "Name": "Transcripts folder", "DependsOn": [ "DIR-1" ], "...": "..." }
+```
+
+```powershell
+Invoke-ThemisPolicy -PolicyPath .\policy.json -Facts @{ HasPrinters = $false; OSBuild = 26100 }
+```
+
+A condition is a value (equal; text without case) or a comparison (`lt`, `le`, `gt`, `ge`, `eq`,
+`ne`). When one is not met, or the fact was not given, the rule is `NotApplicable` and nothing is
+read or changed. A rule whose dependency is not applicable, failed, or in Enforce mode is still not
+compliant is `Skipped`, so a setting is never applied half way.
+
+### One rule at a time
+
+Tools that keep their own history can use `Invoke-ThemisRule`, which evaluates a single rule:
+
+```powershell
+$r = Invoke-ThemisRule -Type Service -Rule @{ ID = 'SVC-1'; Name = 'RemoteRegistry'; StartupType = 'Disabled' } -Mode Enforce
+$r.Data        # what was read, as structured values (here Status and StartType)
+$r.Previous    # restore rules: pass each back with -Mode Enforce to undo the change
+```
+
+It returns the same result as each rule of `Invoke-ThemisPolicy` plus `Data`, `Previous` and
+`Condition` (the condition that was not met), and saves no backup: the caller keeps `Previous`. The schema is in
 [`Schema/ThemisPolicy.schema.json`](Schema/ThemisPolicy.schema.json) and there are small example
 policies in [`Examples/`](Examples/).
 
@@ -182,8 +218,11 @@ Actual      : 8
 ```
 
 Status values: `Compliant`, `Non-Compliant`, `Fixed`, `MissingKey`, `MissingValue`, `MissingService`,
-`EnforceFailed` (the change did not take effect, usually because Group Policy defines the value) and
-`Error` (invalid rule, missing elevation or a failed read).
+`EnforceFailed` (the change did not take effect, usually because Group Policy defines the value),
+`NotApplicable` (its `AppliesIf` is not met, or the item does not exist on this machine),
+`NeedsElevation` (it can only be read as administrator), `Manual` (a check that has to be fixed by
+hand), `Unknown` (a check whose fact was not given), `Skipped` (a `DependsOn` rule is not ready) and
+`Error` (invalid rule or a failed read).
 
 ## Development
 

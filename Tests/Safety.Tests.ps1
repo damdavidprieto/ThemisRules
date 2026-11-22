@@ -89,14 +89,32 @@ Describe 'Backups during Enforce' -Skip:(-not $IsWindows -and $PSVersionTable.PS
 }
 
 Describe 'Previous values are kept when a change fails halfway' -Skip:(-not $IsWindows -and $PSVersionTable.PSEdition -eq 'Core') {
-    It 'registry: records the old value before writing' {
+    It 'registry: a write that fails leaves nothing to undo' {
         New-Item -Path 'TestRegistry:\ThemisFail' -Force | Out-Null
         New-ItemProperty -Path 'TestRegistry:\ThemisFail' -Name 'V' -Value 3 -PropertyType DWord | Out-Null
-        Mock -ModuleName ThemisRules Set-ItemProperty { throw 'access denied' }
+        Mock -ModuleName ThemisRules New-ItemProperty { throw 'access denied' }
         $rule = [pscustomobject]@{ Path = 'TestRegistry:\ThemisFail'; ValueName = 'V'; Value = 1; Type = 'DWord' }
         $result = InModuleScope ThemisRules -Parameters @{ Rule = $rule } { param($Rule) Invoke-ThemisRegistryRule -Rule $Rule -Mode Enforce }
         $result.Status | Should -Be 'EnforceFailed'
-        $result.Previous.Value | Should -Be 3
+        @($result.Previous).Count | Should -Be 0
+    }
+
+    It 'registry: keys changed before a failure are returned to undo, the failed one is not' {
+        foreach ($k in 'A1', 'A2') {
+            New-Item -Path "TestRegistry:\ThemisHalf\$k" -Force | Out-Null
+            New-ItemProperty -Path "TestRegistry:\ThemisHalf\$k" -Name 'V' -Value 0 -PropertyType DWord | Out-Null
+        }
+        $script:writes = 0
+        Mock -ModuleName ThemisRules New-ItemProperty {
+            $script:writes++
+            if ($script:writes -gt 1) { throw 'access denied' }
+            Microsoft.PowerShell.Management\New-ItemProperty -LiteralPath $LiteralPath -Name $Name -Value $Value -PropertyType $PropertyType -Force | Out-Null
+        }
+        $rule = [pscustomobject]@{ Path = 'TestRegistry:\ThemisHalf\A*'; ValueName = 'V'; Value = 1; Type = 'DWord' }
+        $result = InModuleScope ThemisRules -Parameters @{ Rule = $rule } { param($Rule) Invoke-ThemisRegistryRule -Rule $Rule -Mode Enforce }
+        $result.Status | Should -Be 'EnforceFailed'
+        @($result.Previous).Count | Should -Be 1
+        @($result.Previous)[0].Value | Should -Be 0
     }
 
     It 'service: keeps the old startup type when the service then fails to start' {

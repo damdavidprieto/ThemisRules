@@ -63,7 +63,7 @@ Describe 'AuditPolicy provider' {
     It 'reports that elevation is needed' {
         Mock -ModuleName ThemisRules Test-ThemisElevated { $false }
         $result = InModuleScope ThemisRules -Parameters @{ Logon = $logon } { param($Logon) Invoke-ThemisAuditPolicyRule -Rule ([pscustomobject]@{ Subcategory = $Logon; Setting = 'Success' }) -Mode Audit }
-        $result.Status | Should -Be 'Error'
+        $result.Status | Should -Be 'NeedsElevation'
         $result.Reason | Should -Match 'elevated'
     }
 }
@@ -134,7 +134,7 @@ Describe 'FirewallProfile provider' {
 
     It 'rejects <Case>' -TestCases @(
         @{ Case = 'an unknown profile'; Rule = @{ Profile = 'Home'; Setting = 'Enabled'; Value = 'True' } }
-        @{ Case = 'an unknown setting'; Rule = @{ Profile = 'Public'; Setting = 'AllowInboundRules'; Value = 'True' } }
+        @{ Case = 'an unknown setting'; Rule = @{ Profile = 'Public'; Setting = 'DisabledInterfaceAliases'; Value = 'True' } }
         @{ Case = 'an invalid value'; Rule = @{ Profile = 'Public'; Setting = 'DefaultInboundAction'; Value = 'Maybe' } }
     ) {
         $result = InModuleScope ThemisRules -Parameters @{ Rule = [pscustomobject]$Rule } { param($Rule) Invoke-ThemisFirewallProfileRule -Rule $Rule -Mode Enforce }

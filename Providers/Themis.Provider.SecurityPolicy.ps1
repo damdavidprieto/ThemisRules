@@ -38,7 +38,7 @@ function Invoke-ThemisSecurityPolicyRule {
         return $result
     }
     if (-not (Test-ThemisElevated)) {
-        $result.Status = 'Error'
+        $result.Status = 'NeedsElevation'
         $result.Reason = 'Reading the local security policy requires an elevated session (Run as administrator).'
         return $result
     }
@@ -61,10 +61,10 @@ function Invoke-ThemisSecurityPolicyRule {
         $result.Reason = "$key is $shown; required: $($check.Expected)."
 
         if ($Mode -eq 'Enforce') {
-            # Recorded before the change, so the backup covers it even if the read-back fails.
+            Set-ThemisSecurityPolicy -Settings @{ $key = $value } -Confirm:$false
+            # Recorded once the change is made (a failed write changes nothing), before the read-back.
             $old = 0
             if ([int]::TryParse("$current", [ref]$old)) { $result.Previous = [ordered]@{ Key = $key; Value = $old } }
-            Set-ThemisSecurityPolicy -Settings @{ $key = $value } -Confirm:$false
             $after = (Get-ThemisSecurityPolicy)[$key]
             if ((Test-ThemisValue -Actual $after -Rule $Rule).Match) {
                 $result.Status = 'Fixed'
