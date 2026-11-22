@@ -756,6 +756,66 @@
                 "additionalProperties": true
             }
         },
+        "EventLogRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name",
+                    "LogName",
+                    "MaxSizeMB"
+                ],
+                "properties": {
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts: a value, or {\"lt\"|\"le\"|\"gt\"|\"ge\"|\"eq\"|\"ne\": number}."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "LogName": {
+                        "type": "string",
+                        "description": "Event log name, for example Security or Microsoft-Windows-PowerShell/Operational."
+                    },
+                    "MaxSizeMB": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 16384,
+                        "description": "Required maximum size in MB; a larger log is compliant unless Exact is set."
+                    },
+                    "Exact": {
+                        "type": "boolean",
+                        "description": "Require exactly MaxSizeMB (restore rules use it)."
+                    }
+                },
+                "additionalProperties": true
+            }
+        },
         "CheckRules": {
             "type": "array",
             "items": {
