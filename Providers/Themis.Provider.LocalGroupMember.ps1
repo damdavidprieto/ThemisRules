@@ -62,8 +62,9 @@ function Set-ThemisLocalGroupMember {
     if (-not $name) { throw "The local group $Group does not exist." }
     if (-not $PSCmdlet.ShouldProcess("$name ($Group)", "$(if ($Ensure -eq 'Present') { 'Add' } else { 'Remove' }) member $Member")) { return }
     $adsi = [ADSI]"WinNT://$env:COMPUTERNAME/$name,group"
-    if ($Ensure -eq 'Present') { $adsi.Add("WinNT://$Member") }
-    else { $adsi.Remove("WinNT://$Member") }
+    # The ADSI adapter returns the COM result ($null) to the pipeline: discard it, or it ends up in the rule result.
+    if ($Ensure -eq 'Present') { $null = $adsi.Add("WinNT://$Member") }
+    else { $null = $adsi.Remove("WinNT://$Member") }
 }
 
 function Invoke-ThemisLocalGroupMemberRule {
@@ -127,7 +128,7 @@ function Invoke-ThemisLocalGroupMemberRule {
             return $result
         }
 
-        Set-ThemisLocalGroupMember -Group $group -Member $member -Ensure $ensure -Confirm:$false
+        $null = Set-ThemisLocalGroupMember -Group $group -Member $member -Ensure $ensure -Confirm:$false
         $now = Get-ThemisLocalGroupMemberSid -Group $group
         $after = @($now) -contains $member
         $result.Actual = $after

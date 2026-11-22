@@ -181,6 +181,13 @@ Describe 'Feature provider' {
         $r.Previous[0].State | Should -Be 'Enabled'
     }
 
+    It 'keeps the provider result when a command it calls writes to the pipeline' {
+        Mock -ModuleName ThemisRules Set-ThemisOptionalFeature { $script:feature = $State; 'noise' }
+        $r = Invoke-ThemisRule -Type Feature -Rule @{ ID = 'F'; Name = 'SMB1'; Feature = 'SMB1Protocol'; State = 'Disabled' } -Mode Enforce
+        $r.Status | Should -Be 'Fixed'
+        $r.Previous[0].State | Should -Be 'Enabled'
+    }
+
     It 'is NotApplicable when this Windows does not include the feature' {
         $script:feature = $null
         (Invoke-ThemisRule -Type Feature -Rule @{ ID = 'F'; Name = 'old'; Feature = 'Gone'; State = 'Disabled' }).Status | Should -Be 'NotApplicable'
@@ -225,6 +232,13 @@ Describe 'LocalGroupMember provider' {
         (Invoke-ThemisRule -Type LocalGroupMember -Rule $absent).Status | Should -Be 'Compliant'
         Mock -ModuleName ThemisRules Get-ThemisLocalGroupMemberSid { $null }
         (Invoke-ThemisRule -Type LocalGroupMember -Rule $script:groupRule).Status | Should -Be 'NotApplicable'
+    }
+
+    It 'keeps the result and the restore rule when the change writes to the pipeline' {
+        Mock -ModuleName ThemisRules Set-ThemisLocalGroupMember { $script:groupMembers += $Member; $null; 'noise' }
+        $r = Invoke-ThemisRule -Type LocalGroupMember -Rule $script:groupRule -Mode Enforce
+        $r.Status | Should -Be 'Fixed'
+        @($r.Previous).Count | Should -Be 1
     }
 
     It 'refuses names instead of SIDs' {

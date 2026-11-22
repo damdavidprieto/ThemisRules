@@ -142,6 +142,13 @@ function Invoke-ThemisRuleCore {
     $script:ThemisFacts = $Facts
     try { $res = & $command -Rule $Rule -Mode $Mode }
     finally { $script:ThemisFacts = @{} }
+    # A provider returns one dictionary. If something it called also wrote to the pipeline (a COM method returning
+    # $null, for example), the result arrives as a list: take the dictionary, or the status and the restore rules
+    # of a change that did happen would be lost.
+    if ($res -isnot [System.Collections.IDictionary]) {
+        $res = @($res | Where-Object { $_ -is [System.Collections.IDictionary] }) | Select-Object -Last 1
+        if (-not $res) { $res = @{ Status = 'Error'; Reason = "The $Type provider returned no result." } }
+    }
 
     foreach ($key in 'Status', 'IsCompliant', 'Reason', 'Actual', 'Data') { if ($res.Contains($key)) { $result[$key] = $res[$key] } }
     if ($res.Contains('Previous')) { $result.Previous = ConvertTo-ThemisPreviousList $res.Previous }
