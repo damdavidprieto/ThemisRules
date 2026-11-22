@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-11-22
+
+### Added
+- **`AppLockerRules`**: one AppLocker rule collection (`Exe`, `Script`, `Msi`, `Dll`, `Appx`) in `AuditOnly`,
+  `Enabled` or `NotConfigured` mode, with the standard allow rules, allowed publishers and allowed paths. Themis
+  owns the rules named `Themis: ...` and keeps the others; restore rules put back the exact collection.
+- **`ScheduledTaskRules`**: disable, enable or remove a scheduled task; removing records its definition so it can
+  be registered again.
+- **`FirewallRuleRules`**: a firewall rule for one program (for example, block outbound for `mshta.exe`), in the
+  `ThemisRules` group only.
+- **`RootCertificateRules`**: remove (or add back) a trusted root certificate, recording the certificate itself.
+- **`FileSignatureRules`**: a file must have a valid signature, optionally from one publisher (audit only).
+- **`Verified`** and **`RequiresRestart`** in every result of a changed rule: the change is read again after
+  Enforce, and the provider (or the rule) says whether it needs a restart.
+- **`Invoke-ThemisPolicy -RollbackOnFailure`**: a policy is applied whole or not at all.
+- **`Test-ThemisPolicy`** and **`Invoke-ThemisPolicy -Strict`**: unknown fields (with a hint), missing required
+  fields and sections without a provider.
+- **`Compare-ThemisResult`**: rules that drifted or were fixed between two runs.
+- Backups record **`Meta.ContentHash`**, and `Restore-ThemisBackup` refuses a backup edited after it was saved.
 ## [1.7.0] - 2026-11-22
 
 ### Added

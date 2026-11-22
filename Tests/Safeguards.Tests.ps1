@@ -1,7 +1,7 @@
 BeforeAll {
     Import-Module (Join-Path $PSScriptRoot '../ThemisRules.psd1') -Force
 
-    function New-TestPolicy([string]$Path, [hashtable]$Content) {
+    function New-TestPolicy([string]$Path, [System.Collections.IDictionary]$Content) {
         $Content | ConvertTo-Json -Depth 6 | Set-Content -Path $Path
         $Path
     }
@@ -50,11 +50,12 @@ Describe 'Invoke-ThemisPolicy -RollbackOnFailure' -Skip:(-not $IsWindows -and $P
             if ($Mode -eq 'Enforce') { [ordered]@{ Status = 'EnforceFailed'; IsCompliant = $false; Reason = 'could not' } }
             else { [ordered]@{ Status = 'Non-Compliant'; IsCompliant = $false; Reason = 'small' } }
         }
-        $policy = New-TestPolicy -Path (Join-Path $TestDrive 'atomic.json') -Content @{
+        # In order: the registry change first, then the rule that fails.
+        $policy = New-TestPolicy -Path (Join-Path $TestDrive 'atomic.json') -Content ([ordered]@{
             Meta          = @{ Name = 'atomic' }
             RegistryRules = @(@{ ID = 'A1'; Name = 'A'; Path = 'TestRegistry:\ThemisAtomic'; ValueName = 'A'; Value = 2; Type = 'DWord' })
             EventLogRules = @(@{ ID = 'E1'; Name = 'log'; LogName = 'Application'; MaxSizeMB = 64 })
-        }
+        })
         $results = @(Invoke-ThemisPolicy -PolicyPath $policy -Mode Enforce -BackupPath (Join-Path $TestDrive 'bk-atomic') -RollbackOnFailure -Confirm:$false -WarningAction SilentlyContinue)
         (Get-ItemProperty 'TestRegistry:\ThemisAtomic').A | Should -Be 1
         ($results | Where-Object ID -EQ 'A1').RolledBack | Should -BeTrue
