@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-22
+
+### Added
+- **`LocalGroupMemberRules`**: direct membership of an account in a local group, by SID so rules do not
+  depend on the Windows language. Reading works without elevation; Enforce needs it and returns the
+  opposite membership as the restore rule. For example, adding an account to Event Log Readers
+  (`S-1-5-32-573`) lets a tool running without elevation read the Security log.
+
+### Fixed
+- A provider whose commands also write to the pipeline (a COM method returning `$null`, for example) no longer
+  loses its result: `Invoke-ThemisRule` takes the provider's dictionary, so the status and the restore rules
+  of a change that did happen are kept.
+
 ## [1.4.0] - 2026-11-22
 
 ThemisRules can now be the engine of a hardening tool that keeps its own history and user interface,
