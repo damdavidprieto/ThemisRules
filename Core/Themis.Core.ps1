@@ -243,6 +243,7 @@ function Invoke-ThemisPolicy {
                 IsCompliant = $res.IsCompliant
                 Reason      = $res.Reason
                 Actual      = $res.Actual
+                Restorable  = $res.Restorable
                 Backup      = $null
             }
             $results += $obj
