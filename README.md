@@ -133,11 +133,20 @@ A policy is a JSON file with a `Meta` section and one array per rule type:
 | `EventLogRules` | `LogName`, `MaxSizeMB`, `Exact` | Maximum size of an event log, such as `Microsoft-Windows-PowerShell/Operational`. A larger log is compliant unless `Exact`. A log this Windows does not have is `NotApplicable`. Changing the size needs elevation. |
 | `CheckRules` | `Fact`, `Expected`, optional `Action` | Something that has to be done by hand (Secure Boot, BitLocker...). The fact comes from `-Facts`; a check that is not met is `Manual`, and Enforce never changes anything. |
 | `ProcessRules` | `Name`, `State` (`Absent`, `Present`) | `Absent` stops the process in Enforce mode. |
+| `ScheduledTaskRules` | `TaskPath`, `TaskName`, `Ensure` (`Disabled`, `Enabled`, `Absent`, `Present`), `Xml` | Disables, enables or removes a scheduled task. A missing task counts as disabled. Removing records the task definition, so the restore rule registers it again exactly as it was. |
+| `FirewallRuleRules` | `DisplayName`, `Program`, `Direction` (`Outbound`), `Action` (`Block`), `Ensure` | A firewall rule for one program, for example blocking outbound connections of `mshta.exe`. Themis only touches rules in its own group, `ThemisRules`. Needs elevation. |
+| `RootCertificateRules` | `Thumbprint`, `Store` (`LocalMachine`, `CurrentUser`), `Ensure` (`Absent`, `Present`), `RawData` | Whether a certificate is trusted as a root. Removing one records the certificate, so the restore rule adds back the same one; a restore rule cannot add a certificate other than the one its thumbprint names. |
+| `FileSignatureRules` | `Path`, `Publisher`, `AllowMissing` | A file must have a valid signature, optionally from one publisher. Enforce cannot fix it: a file that does not comply is `Manual`. |
+| `AppLockerRules` | `Collection` (`Exe`, `Script`, `Msi`, `Dll`, `Appx`), `Mode` (`AuditOnly`, `Enabled`, `NotConfigured`), `DefaultRules`, `AllowPublishers`, `AllowPaths` | One AppLocker rule collection. The standard rules let everyone run what is in the Windows and Program Files folders, and administrators anything; programs and scripts in Downloads, Temp or inside a `.zip` are not allowed. Start with `AuditOnly`: Windows logs what would be blocked in `Microsoft-Windows-AppLocker/*` without blocking it. Themis owns the rules named `Themis: ...` and keeps the others. AppLocker only acts while the Application Identity service (`AppIDSvc`) runs. Needs elevation. |
 
 Every rule takes `ID`, `Name` and optionally `MacroLevel` (`L1`-`L5`) and `Description`. Values can
 use `Comparison`: `Equal` (default), `AtLeast`, `AtMost`, `Between` (with `Min` and `Max`) or `In`
-(`Value` is a list); Enforce writes `Value`, or `WriteValue` when given.
+(`Value` is a list); Enforce writes `Value`, or `WriteValue` when given. Any rule can set `RequiresRestart` when its
+change only takes effect after a restart.
 
+`Test-ThemisPolicy -Path .\policy.json` lists the problems of a policy: fields the schema does not know (usually a
+typo, with a "did you mean" hint), missing required fields and sections no provider handles. `Invoke-ThemisPolicy
+-Strict` runs it first and refuses a policy with problems.
 ### Conditions and dependencies
 
 Any rule can take `AppliesIf`, conditions on facts about the machine that you pass with `-Facts`, and
@@ -201,8 +210,21 @@ SYSTEM and Administrators can change, and under `%LOCALAPPDATA%` otherwise. Use 
 another folder, or `-NoBackup` to skip them. A backup is a policy that runs as administrator when you
 restore it, so in an elevated session `Restore-ThemisBackup` refuses a file that users without
 elevation could have edited (for example one in `%LOCALAPPDATA%` or in a `-BackupPath` folder): review
-it and copy it into the protected folder first. `-WhatIf` previews any backup.
+it and copy it into the protected folder first. `-WhatIf` previews any backup. Every backup also records the hash
+of its content (`Meta.ContentHash`), and `Restore-ThemisBackup` refuses one that was edited after it was saved,
+wherever it is.
 
+`Invoke-ThemisPolicy -Mode Enforce -RollbackOnFailure` applies a policy whole or not at all: if a change fails, the
+changes of that run are undone, newest first, the remaining rules are not run, and the undone results get
+`RolledBack = $true`.
+
+To see what changed after you applied a policy, compare the two runs:
+
+```powershell
+$applied = Invoke-ThemisPolicy -PolicyPath .\policy.json -Mode Enforce
+Compare-ThemisResult -Reference $applied -Difference (Invoke-ThemisPolicy -PolicyPath .\policy.json) |
+    Where-Object Change -eq 'Drifted'
+```
 ## Results
 
 ```text
@@ -226,6 +248,9 @@ Status values: `Compliant`, `Non-Compliant`, `Fixed`, `MissingKey`, `MissingValu
 hand), `Unknown` (a check whose fact was not given), `Skipped` (a `DependsOn` rule is not ready) and
 `Error` (invalid rule or a failed read).
 
+Every changed rule is read again after Enforce: `Verified` is `$true` when the change shows, `$false` when it does
+not (a policy or a protection may undo it, or it needs a restart). `RequiresRestart` says whether the change needs
+a restart, and `Restorable` whether the provider returned how to undo it.
 ## Development
 
 ```powershell

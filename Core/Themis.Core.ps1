@@ -86,6 +86,14 @@ function Invoke-ThemisPolicy {
         Facts about the machine (a hashtable or an object), used by the AppliesIf conditions of the
         rules and by Check rules, for example @{ HasPrinters = $false; OSBuild = 26100 }.
 
+    .PARAMETER Strict
+        Check the policy first with Test-ThemisPolicy and refuse to run it if it has problems, such as an
+        unknown field (usually a typo) or a missing required field.
+
+    .PARAMETER RollbackOnFailure
+        In Enforce mode, apply the policy whole or not at all: if a change fails, undo the changes made in this
+        run, newest first, and stop. The results of the undone rules get RolledBack = $true.
+
     .EXAMPLE
         Invoke-ThemisPolicy -Baseline Windows-Workstation -MacroLevel L1
 
@@ -133,7 +141,11 @@ function Invoke-ThemisPolicy {
 
         [switch]$NoBackup,
 
-        [object]$Facts = @{}
+        [object]$Facts = @{},
+
+        [switch]$Strict,
+
+        [switch]$RollbackOnFailure
     )
 
     # 1. Initialize
@@ -152,6 +164,15 @@ function Invoke-ThemisPolicy {
     if (-not (Test-Path -LiteralPath $PolicyPath -PathType Leaf)) {
         Write-Error "[Themis] Policy not found: $PolicyPath"
         return $null
+    }
+
+    if ($Strict) {
+        $problems = @(Test-ThemisPolicy -Path $PolicyPath)
+        if ($problems.Count) {
+            Write-Error ("[Themis] The policy has $($problems.Count) problem(s) and -Strict is set; nothing was run. " +
+                (@($problems | Select-Object -First 5 | ForEach-Object { "$($_.Section) $($_.ID): $($_.Problem)" }) -join ' | '))
+            return $null
+        }
     }
 
     # -Encoding UTF8: Windows PowerShell 5.1 reads files without a BOM as ANSI otherwise.
@@ -244,6 +265,8 @@ function Invoke-ThemisPolicy {
                 Reason      = $res.Reason
                 Actual      = $res.Actual
                 Restorable  = $res.Restorable
+                RequiresRestart = $res.RequiresRestart
+                Verified    = $res.Verified
                 Backup      = $null
             }
             $results += $obj
@@ -259,6 +282,20 @@ function Invoke-ThemisPolicy {
                 # halfway (error, Ctrl+C, power cut), the values changed so far can still be restored.
                 $backupFile = Save-ThemisBackup -Folder $BackupPath -PolicyName $policyName -PolicyPath $PolicyPath -Entries $backupRules -File $backupFile -Confirm:$false
                 foreach ($entry in $backupRules) { $entry.Result.Backup = $backupFile }
+            }
+
+            # -RollbackOnFailure: a policy is applied whole or not at all. When a change fails, the ones made in
+            # this run are put back, newest first, and the remaining rules are not run.
+            if ($RollbackOnFailure -and $ruleMode -eq 'Enforce' -and $res.Status -in 'EnforceFailed', 'Error') {
+                Write-Warning "[Themis] $($rule.ID) failed ($($res.Status)); undoing the $($backupRules.Count) change(s) made in this run."
+                $undo = @($backupRules)
+                [array]::Reverse($undo)
+                foreach ($entry in $undo) {
+                    $back = Invoke-ThemisRuleCore -Type ($entry.Section -replace 'Rules$', '') -Rule ([pscustomobject]$entry.Rule) -Mode 'Enforce' -Facts $Facts
+                    $entry.Result | Add-Member -NotePropertyName RolledBack -NotePropertyValue ($back.Status -in 'Fixed', 'Compliant') -Force
+                    if ($back.Status -notin 'Fixed', 'Compliant') { Write-Warning "[Themis] Could not undo $($entry.Rule.ID): $($back.Reason)" }
+                }
+                break
             }
 
         }
@@ -404,6 +441,9 @@ function Save-ThemisBackup {
     foreach ($group in $Entries | Group-Object Section) {
         $backup[$group.Name] = @($group.Group | ForEach-Object { $_.Rule })
     }
+    # Hash of the restore rules: Restore-ThemisBackup refuses a backup whose content no longer matches it, also
+    # when it was copied to another folder.
+    $backup.Meta.ContentHash = Get-ThemisBackupHash -Backup ([pscustomobject]$backup)
 
     if ($PSCmdlet.ShouldProcess($File, 'Save backup of previous values')) {
         $temp = "$File.tmp"
@@ -411,4 +451,42 @@ function Save-ThemisBackup {
         Move-Item -LiteralPath $temp -Destination $File -Force
     }
     return $File
+}
+
+function ConvertTo-ThemisCanonicalText {
+    <#
+    .SYNOPSIS
+        A text form of a value that is the same in Windows PowerShell 5.1 and PowerShell 7 and after a JSON round trip.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([AllowNull()]$Value)
+    if ($null -eq $Value) { return 'null' }
+    if ($Value -is [bool]) { return $(if ($Value) { 'true' } else { 'false' }) }
+    if ($Value -is [string]) { return '"' + $Value.Replace('\', '\\').Replace('"', '\"') + '"' }
+    if ($Value -is [System.Collections.IDictionary]) {
+        return '{' + ((@($Value.Keys | ForEach-Object { "$_" } | Sort-Object) | ForEach-Object { "$_=$(ConvertTo-ThemisCanonicalText $Value[$_])" }) -join ',') + '}'
+    }
+    if ($Value -is [System.Management.Automation.PSCustomObject]) {
+        return '{' + ((@($Value.PSObject.Properties.Name | Sort-Object) | ForEach-Object { "$_=$(ConvertTo-ThemisCanonicalText $Value.$_)" }) -join ',') + '}'
+    }
+    if ($Value -is [System.Collections.IEnumerable]) { return '[' + ((@($Value) | ForEach-Object { ConvertTo-ThemisCanonicalText $_ }) -join ',') + ']' }
+    if ($Value -is [double] -or $Value -is [single] -or $Value -is [decimal]) { return ([decimal]$Value).ToString([cultureinfo]::InvariantCulture) }
+    return ([string]$Value)
+}
+
+function Get-ThemisBackupHash {
+    <#
+    .SYNOPSIS
+        SHA-256 of the restore rules of a backup (every section but Meta), in a form that does not depend on JSON formatting.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([Parameter(Mandatory = $true)]$Backup)
+    $parts = foreach ($name in @($Backup.PSObject.Properties.Name | Where-Object { $_ -ne 'Meta' } | Sort-Object)) {
+        "$name=$(ConvertTo-ThemisCanonicalText @($Backup.$name))"
+    }
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try { return [System.BitConverter]::ToString($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($parts -join "`n"))).Replace('-', '').ToLowerInvariant() }
+    finally { $sha.Dispose() }
 }

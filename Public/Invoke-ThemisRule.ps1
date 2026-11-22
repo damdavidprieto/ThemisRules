@@ -94,5 +94,7 @@ function Invoke-ThemisRule {
         Previous    = @($res.Previous)
         Condition   = $res.Condition
         Restorable  = $res.Restorable
+        RequiresRestart = $res.RequiresRestart
+        Verified    = $res.Verified
     }
 }

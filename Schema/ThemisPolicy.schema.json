@@ -816,6 +816,108 @@
                 "additionalProperties": true
             }
         },
+        "ScheduledTaskRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["ID", "Name", "TaskName"],
+                "properties": {
+                    "ID": { "type": "string" },
+                    "Name": { "type": "string" },
+                    "MacroLevel": { "type": "string", "enum": ["L1", "L2", "L3", "L4", "L5"], "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln." },
+                    "Description": { "type": "string" },
+                    "AppliesIf": { "type": "object", "description": "Conditions on the facts given with -Facts." },
+                    "DependsOn": { "type": "array", "items": { "type": "string" }, "description": "IDs of earlier rules that must be applicable and compliant first." },
+                    "RequiresRestart": { "type": "boolean", "description": "The change needs a restart to take effect." },                    "TaskPath": { "type": "string", "default": "\\", "description": "Folder of the task, starting and ending with a backslash." },
+                    "TaskName": { "type": "string" },
+                    "Ensure": { "type": "string", "enum": ["Disabled", "Enabled", "Absent", "Present"], "default": "Disabled" },
+                    "Xml": { "type": "string", "description": "Task definition, for Present (restore rules carry it)." }
+                },
+                "additionalProperties": true
+            }
+        },
+        "FirewallRuleRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["ID", "Name", "DisplayName"],
+                "properties": {
+                    "ID": { "type": "string" },
+                    "Name": { "type": "string" },
+                    "MacroLevel": { "type": "string", "enum": ["L1", "L2", "L3", "L4", "L5"], "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln." },
+                    "Description": { "type": "string" },
+                    "AppliesIf": { "type": "object", "description": "Conditions on the facts given with -Facts." },
+                    "DependsOn": { "type": "array", "items": { "type": "string" }, "description": "IDs of earlier rules that must be applicable and compliant first." },
+                    "RequiresRestart": { "type": "boolean", "description": "The change needs a restart to take effect." },                    "DisplayName": { "type": "string", "description": "Name of the rule; Themis only touches rules in its own group, ThemisRules." },
+                    "Program": { "type": "string", "description": "Full path of the .exe; environment variables are allowed." },
+                    "Direction": { "type": "string", "enum": ["Outbound", "Inbound"], "default": "Outbound" },
+                    "Action": { "type": "string", "enum": ["Block", "Allow"], "default": "Block" },
+                    "Ensure": { "type": "string", "enum": ["Present", "Absent"], "default": "Present" }
+                },
+                "additionalProperties": true
+            }
+        },
+        "RootCertificateRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["ID", "Name", "Thumbprint"],
+                "properties": {
+                    "ID": { "type": "string" },
+                    "Name": { "type": "string" },
+                    "MacroLevel": { "type": "string", "enum": ["L1", "L2", "L3", "L4", "L5"], "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln." },
+                    "Description": { "type": "string" },
+                    "AppliesIf": { "type": "object", "description": "Conditions on the facts given with -Facts." },
+                    "DependsOn": { "type": "array", "items": { "type": "string" }, "description": "IDs of earlier rules that must be applicable and compliant first." },
+                    "RequiresRestart": { "type": "boolean", "description": "The change needs a restart to take effect." },                    "Thumbprint": { "type": "string", "pattern": "^[0-9A-Fa-f]{40}$" },
+                    "Store": { "type": "string", "enum": ["LocalMachine", "CurrentUser"], "default": "LocalMachine" },
+                    "Ensure": { "type": "string", "enum": ["Absent", "Present"], "default": "Absent" },
+                    "RawData": { "type": "string", "description": "The certificate in Base64, for Present (restore rules carry it)." }
+                },
+                "additionalProperties": true
+            }
+        },
+        "FileSignatureRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["ID", "Name", "Path"],
+                "properties": {
+                    "ID": { "type": "string" },
+                    "Name": { "type": "string" },
+                    "MacroLevel": { "type": "string", "enum": ["L1", "L2", "L3", "L4", "L5"], "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln." },
+                    "Description": { "type": "string" },
+                    "AppliesIf": { "type": "object", "description": "Conditions on the facts given with -Facts." },
+                    "DependsOn": { "type": "array", "items": { "type": "string" }, "description": "IDs of earlier rules that must be applicable and compliant first." },
+                    "RequiresRestart": { "type": "boolean", "description": "The change needs a restart to take effect." },                    "Path": { "type": "string", "description": "Path of the file; environment variables are allowed." },
+                    "Publisher": { "type": "string", "description": "Text the signer must contain, such as O=Microsoft Corporation." },
+                    "AllowMissing": { "type": "boolean", "default": false }
+                },
+                "additionalProperties": true
+            }
+        },
+        "AppLockerRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["ID", "Name", "Collection"],
+                "properties": {
+                    "ID": { "type": "string" },
+                    "Name": { "type": "string" },
+                    "MacroLevel": { "type": "string", "enum": ["L1", "L2", "L3", "L4", "L5"], "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln." },
+                    "Description": { "type": "string" },
+                    "AppliesIf": { "type": "object", "description": "Conditions on the facts given with -Facts." },
+                    "DependsOn": { "type": "array", "items": { "type": "string" }, "description": "IDs of earlier rules that must be applicable and compliant first." },
+                    "RequiresRestart": { "type": "boolean", "description": "The change needs a restart to take effect." },                    "Collection": { "type": "string", "enum": ["Exe", "Script", "Msi", "Dll", "Appx"] },
+                    "Mode": { "type": "string", "enum": ["AuditOnly", "Enabled", "NotConfigured"], "default": "AuditOnly" },
+                    "DefaultRules": { "type": "boolean", "default": true, "description": "Allow the Windows and Program Files folders to everyone, and everything to administrators." },
+                    "AllowPublishers": { "type": "array", "items": { "type": "string" }, "description": "Publishers allowed anywhere, as AppLocker writes them." },
+                    "AllowPaths": { "type": "array", "items": { "type": "string" }, "description": "Extra folders or files allowed. Only use folders users cannot write to." },
+                    "RestoreXml": { "type": "string", "description": "Restore rules only: the exact collection to put back." }
+                },
+                "additionalProperties": true
+            }
+        },
         "CheckRules": {
             "type": "array",
             "items": {
