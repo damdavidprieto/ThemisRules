@@ -912,7 +912,8 @@
                     "Mode": { "type": "string", "enum": ["AuditOnly", "Enabled", "NotConfigured"], "default": "AuditOnly" },
                     "DefaultRules": { "type": "boolean", "default": true, "description": "Allow the Windows and Program Files folders to everyone, and everything to administrators." },
                     "AllowPublishers": { "type": "array", "items": { "type": "string" }, "description": "Publishers allowed anywhere, as AppLocker writes them." },
-                    "AllowPaths": { "type": "array", "items": { "type": "string" }, "description": "Extra folders or files allowed. Only use folders users cannot write to." },
+                    "AllowPaths": { "type": "array", "items": { "type": "string" }, "description": "Extra folders or files allowed. Only use folders users cannot write to, or leave out the ones they can with AllowPathExceptions." },
+                    "AllowPathExceptions": { "type": "array", "items": { "type": "string" }, "description": "Paths the AllowPaths rules do not cover, such as the Downloads folder of every user." },
                     "RestoreXml": { "type": "string", "description": "Restore rules only: the exact collection to put back." }
                 },
                 "additionalProperties": true

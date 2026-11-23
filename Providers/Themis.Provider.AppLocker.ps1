@@ -9,6 +9,8 @@
 #                    them), for example 'O=ANTHROPIC, PBC, L=SAN FRANCISCO, S=CALIFORNIA, C=US'.
 #   AllowPaths       Extra folders or files allowed, such as '%PROGRAMDATA%\MyTool\*'. Use only folders that users
 #                    cannot write to, or the rule allows whatever they put there.
+#   AllowPathExceptions  Paths that the AllowPaths rules do not cover, such as '%OSDRIVE%\Users\*\Downloads\*'. With
+#                    them, a broad allowed folder can leave out the places where downloads and temporary files land.
 #   RestoreXml       Restore rules only: the exact collection to put back ('' = no collection).
 # Themis owns the rules whose name starts with 'Themis: ' and leaves the others in the collection as they are.
 # Start with AuditOnly: Windows logs in Microsoft-Windows-AppLocker/* what would have been blocked, without blocking
@@ -78,14 +80,20 @@ function Get-ThemisAppLockerRuleSet {
     #>
     [CmdletBinding()]
     [OutputType([object[]])]
-    param([Parameter(Mandatory = $true)][string]$Collection, [bool]$DefaultRules = $true, [string[]]$AllowPublishers = @(), [string[]]$AllowPaths = @())
+    param([Parameter(Mandatory = $true)][string]$Collection, [bool]$DefaultRules = $true, [string[]]$AllowPublishers = @(), [string[]]$AllowPaths = @(), [string[]]$AllowPathExceptions = @())
 
     $enc = { param($s) [System.Security.SecurityElement]::Escape("$s") }
     $rules = [System.Collections.Generic.List[string]]::new()
     $pathRule = {
-        param($name, $sid, $path)
-        $id = Get-ThemisAppLockerId "$Collection|path|$sid|$path"
-        $rules.Add("<FilePathRule Id=`"$id`" Name=`"$(& $enc ($script:ThemisAppLockerPrefix + $name))`" Description=`"`" UserOrGroupSid=`"$sid`" Action=`"Allow`"><Conditions><FilePathCondition Path=`"$(& $enc $path)`" /></Conditions></FilePathRule>")
+        param($name, $sid, $path, [string[]]$except = @())
+        # The exceptions are part of the Id: changing them changes the rule.
+        $id = Get-ThemisAppLockerId ("$Collection|path|$sid|$path" + $(if ($except.Count) { "|except|$($except -join '|')" }))
+        $exceptXml = ''
+        if ($except.Count) {
+            $conditions = foreach ($x in $except) { '<FilePathCondition Path="{0}" />' -f (& $enc $x) }
+            $exceptXml = '<Exceptions>{0}</Exceptions>' -f ($conditions -join '')
+        }
+        $rules.Add("<FilePathRule Id=`"$id`" Name=`"$(& $enc ($script:ThemisAppLockerPrefix + $name))`" Description=`"`" UserOrGroupSid=`"$sid`" Action=`"Allow`"><Conditions><FilePathCondition Path=`"$(& $enc $path)`" /></Conditions>$exceptXml</FilePathRule>")
     }
     $publisherRule = {
         param($name, $sid, $publisher)
@@ -107,7 +115,8 @@ function Get-ThemisAppLockerRuleSet {
         }
     }
     foreach ($p in @($AllowPublishers | Where-Object { $_ })) { & $publisherRule "Publisher $p" 'S-1-1-0' $p }
-    foreach ($p in @($AllowPaths | Where-Object { $_ })) { & $pathRule "Path $p" 'S-1-1-0' $p }
+    $except = @($AllowPathExceptions | Where-Object { $_ })
+    foreach ($p in @($AllowPaths | Where-Object { $_ })) { & $pathRule "Path $p" 'S-1-1-0' $p $except }
     return @($rules)
 }
 
@@ -148,7 +157,7 @@ function Invoke-ThemisAppLockerRule {
             $wanted = $null
         }
         else {
-            $wanted = @(Get-ThemisAppLockerRuleSet -Collection $collection -DefaultRules ($null -eq $Rule.DefaultRules -or [bool]$Rule.DefaultRules) -AllowPublishers @($Rule.AllowPublishers) -AllowPaths @($Rule.AllowPaths))
+            $wanted = @(Get-ThemisAppLockerRuleSet -Collection $collection -DefaultRules ($null -eq $Rule.DefaultRules -or [bool]$Rule.DefaultRules) -AllowPublishers @($Rule.AllowPublishers) -AllowPaths @($Rule.AllowPaths) -AllowPathExceptions @($Rule.AllowPathExceptions))
             $haveIds = @(if ($node) { @($node.ChildNodes | Where-Object { $_ -is [System.Xml.XmlElement] } | ForEach-Object { $_.GetAttribute('Id') }) })
             $wantIds = @($wanted | ForEach-Object { ([xml]$_).DocumentElement.GetAttribute('Id') })
             $ownIds = @(if ($node) { @($node.ChildNodes | Where-Object { $_ -is [System.Xml.XmlElement] -and $_.GetAttribute('Name').StartsWith($script:ThemisAppLockerPrefix) } | ForEach-Object { $_.GetAttribute('Id') }) })
