@@ -1,6 +1,6 @@
 @{
     RootModule           = 'ThemisRules.psm1'
-    ModuleVersion        = '1.8.0'
+    ModuleVersion        = '1.9.0'
     GUID                 = 'ba3f140e-776e-4424-9491-9533f52e5052'
     Author               = 'David Prieto'
     CompanyName          = 'David Prieto'

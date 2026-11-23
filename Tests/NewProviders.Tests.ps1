@@ -173,6 +173,22 @@ Describe 'AppLocker provider' {
         $names | Should -Contain 'Themis: Path %PROGRAMDATA%\Other\*'
     }
 
+    It 'leaves the exceptions out of the allowed paths, and a change in them is a new rule' {
+        $broad = $script:rule.Clone()
+        $broad.AllowPaths = @('%OSDRIVE%\Users\*')
+        $broad.AllowPathExceptions = @('%OSDRIVE%\Users\*\Downloads\*', '%OSDRIVE%\Users\*\AppData\Local\Temp\*')
+        $null = Invoke-ThemisRule -Type AppLocker -Rule $broad -Mode Enforce
+        $col = ([xml]$script:policy).AppLockerPolicy.RuleCollection
+        $users = @($col.ChildNodes | Where-Object { $_.GetAttribute('Name') -eq 'Themis: Path %OSDRIVE%\Users\*' })[0]
+        @($users.Exceptions.FilePathCondition | ForEach-Object { $_.GetAttribute('Path') }) | Should -Be @('%OSDRIVE%\Users\*\Downloads\*', '%OSDRIVE%\Users\*\AppData\Local\Temp\*')
+        (Invoke-ThemisRule -Type AppLocker -Rule $broad).Status | Should -Be 'Compliant'
+        $fewer = $broad.Clone(); $fewer.AllowPathExceptions = @('%OSDRIVE%\Users\*\Downloads\*')
+        (Invoke-ThemisRule -Type AppLocker -Rule $fewer).Status | Should -Be 'Non-Compliant'
+        # The standard rules never get exceptions.
+        $windows = @($col.ChildNodes | Where-Object { $_.GetAttribute('Name') -eq 'Themis: Windows folder' })[0]
+        $windows.Exceptions | Should -BeNullOrEmpty
+    }
+
     It 'says when the Application Identity service is not running, and refuses bad collections' {
         Mock -ModuleName ThemisRules Get-ThemisAppIdServiceStatus { 'Stopped' }
         (Invoke-ThemisRule -Type AppLocker -Rule $script:rule).Reason | Should -Match 'AppIDSvc'

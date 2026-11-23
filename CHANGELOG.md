@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-11-23
+
+### Added
+- **`AppLockerRules` `AllowPathExceptions`**: paths that the `AllowPaths` rules do not cover, written as AppLocker
+  exceptions. A broad allowed folder such as `%OSDRIVE%\Users\*` can leave out Downloads and Temp. The exceptions
+  are part of the rule Id, so changing them is a new rule.
+
 ## [1.8.0] - 2026-11-22
 
 ### Added
