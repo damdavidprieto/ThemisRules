@@ -15,6 +15,25 @@ function Export-ThemisReport {
         Output file.
     .PARAMETER Format
         Json, Csv or Html.
+
+    .PARAMETER Title
+        Title of the HTML report. Defaults to "ThemisRules report".
+
+    .PARAMETER Language
+        Language of the HTML page (the lang attribute), such as es or es-ES. Defaults to en.
+
+    .PARAMETER Labels
+        Texts of the HTML report in another language, by key: Policy, Generated, Compliance, Of, Rules, Excepted,
+        Weighted, NotCompliant, and the header of each column (ID, Type, Name, MacroLevel, Severity, Status, Reason, or
+        the name of an extra column). Keys you leave out keep the English text.
+
+    .PARAMETER ValueLabels
+        How to show Status and Severity values in the HTML report, for example @{ Compliant = 'Cumple'; High = 'Alta' }.
+        The value itself is still used for the colours.
+
+    .PARAMETER Columns
+        The columns of the HTML table, in order: any property of the results, also ones you added (an explanation,
+        how to fix it, a category). Defaults to ID, Type, Name, MacroLevel, Severity, Status and Reason.
     .EXAMPLE
         Invoke-ThemisPolicy -PolicyPath .\baseline.json | Export-ThemisReport -Path .\report.html
 
@@ -25,7 +44,16 @@ function Export-ThemisReport {
         Export-ThemisReport -InputObject $results -Path .\l1.csv
 
         Saves the L1 results as CSV, one row per rule.
+
+    .EXAMPLE
+        $results | ForEach-Object { $_ | Add-Member Category 'Red' -PassThru } |
+            Export-ThemisReport -Path .\informe.html -Title 'Informe de seguridad' -Language es -Columns ID, Category, Name, Status, Reason `
+                -Labels @{ Compliance = 'Cumplimiento'; Of = 'de'; Rules = 'reglas'; Name = 'Regla'; Category = 'Zona'; Status = 'Estado'; Reason = 'Motivo' } `
+                -ValueLabels @{ Compliant = 'Cumple'; 'Non-Compliant' = 'No cumple' }
+
+        Writes the report in Spanish, with a column of your own.
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '', Justification = 'Labels and ValueLabels are used inside the script blocks that build the HTML.')]
     [CmdletBinding()]
     [OutputType([System.IO.FileInfo])]
     param(
@@ -36,7 +64,19 @@ function Export-ThemisReport {
         [string]$Path,
 
         [ValidateSet('Json', 'Csv', 'Html')]
-        [string]$Format
+        [string]$Format,
+
+        [string]$Title = 'ThemisRules report',
+
+        [ValidatePattern('^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$')]
+        [string]$Language = 'en',
+
+        [hashtable]$Labels = @{},
+
+        [hashtable]$ValueLabels = @{},
+
+        [ValidateNotNullOrEmpty()]
+        [string[]]$Columns = @('ID', 'Type', 'Name', 'MacroLevel', 'Severity', 'Status', 'Reason')
     )
 
     begin {
@@ -105,24 +145,41 @@ function Export-ThemisReport {
                 $safe | Export-Csv -Path $Path -NoTypeInformation -Encoding UTF8
             }
             'Html' {
-                $encode = { param($value) [System.Net.WebUtility]::HtmlEncode("$value") }
+                # Every value is encoded, also titles and labels: nothing from the system or the caller becomes markup.
+                $encode = { param($value) [System.Net.WebUtility]::HtmlEncode("$(@($value) -join ', ')") }
+                $english = @{
+                    Policy = 'Policy'; Generated = 'Generated'; Compliance = 'Compliance'; Of = 'of'; Rules = 'rules'; Excepted = 'excepted'
+                    Weighted = 'Weighted by severity'; NotCompliant = 'Not compliant'; MacroLevel = 'Level'
+                }
+                $label = { param($key) if ($Labels.ContainsKey($key)) { "$($Labels[$key])" } elseif ($english.ContainsKey($key)) { $english[$key] } else { $key } }
+                $show = { param($value) if ($null -ne $value -and $ValueLabels.ContainsKey("$value")) { "$($ValueLabels["$value"])" } else { $value } }
+                $statusColumn = [array]::IndexOf([string[]]$Columns, 'Status') + 1
+                $header = ($Columns | ForEach-Object { "<th>$(& $encode (& $label $_))</th>" }) -join ''
                 $rows = foreach ($r in $results) {
                     $class = if ($r.Status -eq 'Excepted') { 'exc' } elseif ($r.IsCompliant) { 'ok' } else { 'fail' }
-                    "<tr class='$class'><td>$(& $encode $r.ID)</td><td>$(& $encode $r.Type)</td><td>$(& $encode $r.Name)</td><td>$(& $encode $r.MacroLevel)</td><td>$(& $encode $r.Severity)</td><td>$(& $encode $r.Status)</td><td>$(& $encode $r.Reason)</td></tr>"
+                    $cells = foreach ($column in $Columns) {
+                        $value = if ($r.PSObject.Properties[$column]) { $r.$column } else { $null }
+                        if ($column -in 'Status', 'Severity') { $value = & $show $value }
+                        "<td>$(& $encode $value)</td>"
+                    }
+                    "<tr class='$class'>$($cells -join '')</tr>"
                 }
                 $policyNames = & $encode ($summary.Policies -join ', ')
+                $color = if ($statusColumn -gt 0) { "tr.ok td:nth-child($statusColumn){color:#1a7f37}tr.fail td:nth-child($statusColumn){color:#cf222e}tr.exc td:nth-child($statusColumn){color:#9a6700}" } else { '' }
+                $severities = ($bySeverity.Keys | ForEach-Object { "$($bySeverity[$_]) $(& $show $_)" }) -join ', '
+                $excepted = if ($summary.Excepted) { ", $($summary.Excepted) $(& $label 'Excepted')" } else { '' }
                 @"
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><title>ThemisRules report</title>
+<html lang="$Language"><head><meta charset="utf-8"><title>$(& $encode $Title)</title>
 <style>body{font-family:Segoe UI,Arial,sans-serif;margin:24px}table{border-collapse:collapse;width:100%}
-th,td{border:1px solid #ccc;padding:6px;text-align:left}tr.ok td:nth-child(6){color:#1a7f37}tr.fail td:nth-child(6){color:#cf222e}tr.exc td:nth-child(6){color:#9a6700}</style>
+th,td{border:1px solid #ccc;padding:6px;text-align:left}$color</style>
 </head><body>
-<h1>ThemisRules report</h1>
-<p>Policy: $policyNames<br>Generated: $($summary.Generated)<br>
-Compliance: <strong>$($summary.Score)%</strong> ($compliant of $($counted.Count) rules$(if ($summary.Excepted) { ", $($summary.Excepted) excepted" }))<br>
-Weighted by severity: <strong>$($summary.WeightedScore)%</strong><br>
-Not compliant: $(($bySeverity.Keys | ForEach-Object { "$($bySeverity[$_]) $_" }) -join ', ')</p>
-<table><thead><tr><th>ID</th><th>Type</th><th>Name</th><th>Level</th><th>Severity</th><th>Status</th><th>Reason</th></tr></thead>
+<h1>$(& $encode $Title)</h1>
+<p>$(& $encode (& $label 'Policy')): $policyNames<br>$(& $encode (& $label 'Generated')): $($summary.Generated)<br>
+$(& $encode (& $label 'Compliance')): <strong>$($summary.Score)%</strong> ($compliant $(& $encode (& $label 'Of')) $($counted.Count) $(& $encode (& $label 'Rules'))$(& $encode $excepted))<br>
+$(& $encode (& $label 'Weighted')): <strong>$($summary.WeightedScore)%</strong><br>
+$(& $encode (& $label 'NotCompliant')): $(& $encode $severities)</p>
+<table><thead><tr>$header</tr></thead>
 <tbody>
 $($rows -join "`n")
 </tbody></table></body></html>
