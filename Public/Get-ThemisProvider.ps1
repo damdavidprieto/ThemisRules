@@ -5,7 +5,7 @@ function Get-ThemisProvider {
     .DESCRIPTION
         Each provider handles one rule section of a policy: the "Registry" provider handles
         "RegistryRules", and so on. Sections without a provider are skipped by
-        Invoke-ThemisPolicy. The old name Get-ThemisProviders still works as an alias.
+        Invoke-ThemisPolicy.
     .EXAMPLE
         Get-ThemisProvider
 
@@ -29,7 +29,3 @@ function Get-ThemisProvider {
         }
     }
 }
-
-
-# Name from earlier versions, kept so existing scripts keep working.
-New-Alias -Name Get-ThemisProviders -Value Get-ThemisProvider

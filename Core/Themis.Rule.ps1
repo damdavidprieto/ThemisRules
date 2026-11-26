@@ -79,6 +79,40 @@ function Test-ThemisAppliesIf {
     return $null
 }
 
+$script:ThemisSeverities = 'Low', 'Medium', 'High', 'Critical'
+
+function Get-ThemisSeverity {
+    <#
+    .SYNOPSIS
+        The Severity of a rule: Low, Medium, High or Critical. Medium when the rule does not say, or says something else.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([Parameter(Mandatory = $true)]$Rule)
+    $value = "$($Rule.Severity)"
+    foreach ($level in $script:ThemisSeverities) { if ($value -eq $level) { return $level } }
+    if ($value) { Write-Warning "[Themis] Rule $($Rule.ID) has an unknown Severity '$value' (use Low, Medium, High or Critical); Medium is used." }
+    return 'Medium'
+}
+
+function ConvertTo-ThemisExceptedResult {
+    <#
+    .SYNOPSIS
+        Marks a result as Excepted when the rule has a valid exception and does not comply. Adds Exception to the result.
+    #>
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory = $true)]$Result, $Exception)
+    $Result | Add-Member -NotePropertyName Exception -NotePropertyValue $Exception -Force
+    if ($Exception -and $Result.Status -in $script:ThemisExceptedStatuses) {
+        $by = if ($Exception.Owner) { " by $($Exception.Owner)" } else { '' }
+        $until = if ($Exception.Until) { " until $($Exception.Until)" } else { '' }
+        $Result.Reason = "Excepted$by$until`: $($Exception.Reason) ($($Result.Reason))"
+        $Result.Status = 'Excepted'
+    }
+    return $Result
+}
+
 function ConvertTo-ThemisPreviousList {
     <#
     .SYNOPSIS

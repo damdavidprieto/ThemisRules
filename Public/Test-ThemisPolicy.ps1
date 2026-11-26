@@ -1,3 +1,6 @@
+# Fields that every rule may have, whatever its type.
+$script:ThemisCommonRuleFields = 'ID', 'Name', 'MacroLevel', 'Description', 'AppliesIf', 'DependsOn', 'RequiresRestart', 'Severity', 'References'
+
 function Test-ThemisPolicy {
     <#
     .SYNOPSIS
@@ -7,7 +10,9 @@ function Test-ThemisPolicy {
         Reports, one object per problem (Section, ID, Problem): sections that no provider handles, rules without
         a required field, and fields that the schema does not know. An unknown field is usually a typo, such as
         "Vaule" for "Value": without this check the rule would run without it and do something else than meant.
-        Fields starting with "_" are ignored (the engine adds them). Returns nothing when the policy is valid.
+        Fields starting with "_" are ignored (the engine adds them), and so are the fields every rule may have (ID,
+        Name, MacroLevel, Description, AppliesIf, DependsOn, RequiresRestart, Severity and References). A Severity
+        other than Low, Medium, High or Critical is a problem too. Returns nothing when the policy is valid.
         Invoke-ThemisPolicy -Strict runs it first and refuses a policy with problems.
 
     .PARAMETER Path
@@ -45,6 +50,9 @@ function Test-ThemisPolicy {
         }
         foreach ($rule in @($section.Value)) {
             $id = "$($rule.ID)"
+            if ($rule.Severity -and "$($rule.Severity)" -notin 'Low', 'Medium', 'High', 'Critical') {
+                [pscustomobject]@{ Section = $section.Name; ID = $id; Problem = "Severity must be Low, Medium, High or Critical: '$($rule.Severity)'." }
+            }
             foreach ($field in $required) {
                 # An empty list is a valid value (UserRights: nobody holds the right); a missing field is not.
                 if ($null -eq $rule.PSObject.Properties[$field] -or ($null -eq $rule.$field)) {
@@ -53,7 +61,7 @@ function Test-ThemisPolicy {
             }
             if (-not $known.Count) { continue }
             foreach ($field in $rule.PSObject.Properties.Name) {
-                if ($field.StartsWith('_') -or $field -in $known) { continue }
+                if ($field.StartsWith('_') -or $field -in $known -or $field -in $script:ThemisCommonRuleFields) { continue }
                 $hint = @($known | Where-Object { [string]::Equals($_, $field, 'OrdinalIgnoreCase') -or (Get-ThemisEditDistance $_ $field) -le 2 }) | Select-Object -First 1
                 [pscustomobject]@{ Section = $section.Name; ID = $id; Problem = "Unknown field $field$(if ($hint) { " (did you mean ${hint}?)" })." }
             }
