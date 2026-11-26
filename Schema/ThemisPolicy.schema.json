@@ -171,6 +171,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 }
             }
@@ -262,6 +266,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 }
             }
@@ -335,6 +343,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 }
             }
@@ -420,6 +432,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 }
             }
@@ -509,6 +525,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 }
             }
@@ -617,6 +637,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 }
             }
@@ -731,6 +755,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 }
             }
@@ -808,6 +836,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 }
             }
@@ -886,6 +918,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 }
             }
@@ -971,6 +1007,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 },
                 "additionalProperties": true
@@ -1053,6 +1093,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 },
                 "additionalProperties": true
@@ -1142,6 +1186,10 @@
                             "type": "string"
                         },
                         "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 },
                 "additionalProperties": true
@@ -1241,6 +1289,10 @@
                             "type": "string"
                         },
                         "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 },
                 "additionalProperties": true
@@ -1332,6 +1384,10 @@
                             "type": "string"
                         },
                         "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 },
                 "additionalProperties": true
@@ -1411,6 +1467,10 @@
                             "type": "string"
                         },
                         "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 },
                 "additionalProperties": true
@@ -1527,6 +1587,10 @@
                             "type": "string"
                         },
                         "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 },
                 "additionalProperties": true
@@ -1650,6 +1714,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 },
                 "additionalProperties": true
@@ -1741,6 +1809,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 },
                 "additionalProperties": true
@@ -1816,6 +1888,10 @@
                     "RequiresRestart": {
                         "type": "boolean",
                         "description": "The change needs a restart to take effect."
+                    },
+                    "Caution": {
+                        "type": "string",
+                        "description": "What the rule can break when it is enforced: remote administration, network access, sign-in. Tools show it next to the result."
                     }
                 }
             }

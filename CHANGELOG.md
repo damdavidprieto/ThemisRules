@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.1.0] - 2026-11-26
 
 ### Added
+- **`Caution`** on rules: what the rule can break when it is enforced. The Windows workstation baseline marks the rules that can cut off remote administration or network access (WIN-UAC-005, WIN-CRED-002, WIN-NET-*, WIN-RDP-001, WIN-WRM-*, WIN-SVC-001, WIN-FW-001/006/011, WIN-URA-017, and at L2 WIN-URA-025 to 027 and WIN-ACC-011).
+- **Stable rule IDs.** `Tests/Data/baseline-ids.json` lists the ID and MacroLevel of every baseline rule. A test fails when an ID disappears or changes its level, so such a change is made on purpose: update the list in the same commit and add a line under Changed. New IDs need no change there.
 - `AntivirusProducts` fact: every registered antivirus as `{ Name, Enabled, UpToDate }`. `DefenderMode` is always
   `Active`, `Passive`, `Off`, `EDR Block` or `Unknown` (`$null` when it cannot be read).
 - `ConsoleUser`, `ConsoleUserSid` and `ConsoleUserIsAdministrator`: the account at the screen, also when an elevated

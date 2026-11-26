@@ -1,5 +1,5 @@
 # Fields that every rule may have, whatever its type.
-$script:ThemisCommonRuleFields = 'ID', 'Name', 'MacroLevel', 'Description', 'AppliesIf', 'DependsOn', 'RequiresRestart', 'Severity', 'References'
+$script:ThemisCommonRuleFields = 'ID', 'Name', 'MacroLevel', 'Description', 'AppliesIf', 'DependsOn', 'RequiresRestart', 'Severity', 'References', 'Caution'
 
 function Test-ThemisPolicy {
     <#
@@ -11,7 +11,7 @@ function Test-ThemisPolicy {
         a required field, and fields that the schema does not know. An unknown field is usually a typo, such as
         "Vaule" for "Value": without this check the rule would run without it and do something else than meant.
         Fields starting with "_" are ignored (the engine adds them), and so are the fields every rule may have (ID,
-        Name, MacroLevel, Description, AppliesIf, DependsOn, RequiresRestart, Severity and References). A Severity
+        Name, MacroLevel, Description, AppliesIf, DependsOn, RequiresRestart, Severity, References and Caution). A Severity
         other than Low, Medium, High or Critical is a problem too. Returns nothing when the policy is valid.
         Invoke-ThemisPolicy -Strict runs it first and refuses a policy with problems.
 
