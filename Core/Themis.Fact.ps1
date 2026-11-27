@@ -15,6 +15,9 @@ $script:ThemisFactCatalog = [ordered]@{
     IsElevated              = @{ Source = 'OS'; Description = 'The session runs as administrator.' }
     UserIsAdministrator     = @{ Source = 'OS'; Description = 'The account of the session is a member of Administrators, elevated or not.' }
     DomainJoined            = @{ Source = 'OS'; Description = 'The machine is joined to a domain.' }
+    ConsoleUser             = @{ Source = 'Console'; Description = 'The account signed in at the screen (not always the one running an elevated session).' }
+    ConsoleUserSid          = @{ Source = 'Console'; Description = 'SID of that account.' }
+    ConsoleUserIsAdministrator = @{ Source = 'Console'; Description = 'That account is a member of Administrators (direct membership when it is not the account of this session).' }
     IsLaptop                = @{ Source = 'OS'; Description = 'The machine has a battery.' }
     UefiFirmware            = @{ Source = 'Firmware'; Description = 'The machine started with UEFI firmware (not legacy BIOS).' }
     SecureBootOn            = @{ Source = 'Firmware'; Description = 'Secure Boot is on.' }
@@ -30,9 +33,10 @@ $script:ThemisFactCatalog = [ordered]@{
     BitLockerStartupPin     = @{ Source = 'BitLocker'; Description = 'BitLocker asks for a PIN or a startup key at boot (needs elevation).' }
     AntivirusHealthy        = @{ Source = 'Antivirus'; Description = 'An antivirus registered in Windows Security is on and up to date.' }
     AntivirusStatus         = @{ Source = 'Antivirus'; Description = 'State of every registered antivirus, as text.' }
+    AntivirusProducts       = @{ Source = 'Antivirus'; Description = 'Every registered antivirus, as objects with Name, Enabled and UpToDate.' }
     ThirdPartyAntivirus     = @{ Source = 'Antivirus'; Description = 'Registered antivirus products other than Microsoft Defender.' }
     DefenderActive          = @{ Source = 'Antivirus'; Description = 'Microsoft Defender Antivirus is the active antivirus.' }
-    DefenderMode            = @{ Source = 'Antivirus'; Description = 'Active, Passive, Off or EDR Block.' }
+    DefenderMode            = @{ Source = 'Antivirus'; Description = 'Active, Passive, Off, EDR Block or Unknown ($null when it cannot be read).' }
     LastSecurityUpdateDays  = @{ Source = 'Updates'; Description = 'Days since the newest installed security update.' }
     UpdatesRecent           = @{ Source = 'Updates'; Description = 'A security update was installed in the last 40 days.' }
     SmartAppControlState    = @{ Source = 'SmartAppControl'; Description = 'On, Evaluation or Off.' }
@@ -48,9 +52,12 @@ $script:ThemisFactCatalog = [ordered]@{
     HasWifi                 = @{ Source = 'Devices'; Description = 'A Wi-Fi adapter is present.' }
     HasSmbShares            = @{ Source = 'Devices'; Description = 'The machine shares folders (other than the administrative shares).' }
     HwAccessDrivers         = @{ Source = 'Drivers'; Description = 'Loaded drivers known to give direct access to hardware (memory, ports, CPU registers).' }
+    HwAccessDriverList      = @{ Source = 'Drivers'; Description = 'Those drivers, as objects with File, Name, DisplayName and Path.' }
     NoHwAccessDrivers       = @{ Source = 'Drivers'; Description = 'None of those drivers is loaded.' }
     UnsignedSystemServices  = @{ Source = 'Services'; Description = 'Services that run as SYSTEM a program outside Windows without a valid signature.' }
     SystemServicesSigned    = @{ Source = 'Services'; Description = 'Every service that runs as SYSTEM runs a signed program.' }
+    AddedRootCertificates   = @{ Source = 'RootCertificates'; Description = 'Root certificates added by a person or a program, outside those of Windows, as objects with Store, Thumbprint, Name, Subject, NotAfter and Antivirus.' }
+    NoAddedRootCerts        = @{ Source = 'RootCertificates'; Description = 'No root certificate was added, apart from those of an antivirus.' }
 }
 
 # Drivers of tuning and monitoring tools that read and write physical memory, ports or CPU registers from the kernel.
@@ -218,6 +225,7 @@ function Read-ThemisAntivirusFact {
     $facts = @{
         AntivirusHealthy    = $(if ($states.Count) { [bool]@($states | Where-Object { $_.Enabled -and $_.UpToDate }).Count } else { $null })
         AntivirusStatus     = (@($states | ForEach-Object Text) -join '; ')
+        AntivirusProducts   = @($states | ForEach-Object { [pscustomobject]@{ Name = $_.Name; Enabled = $_.Enabled; UpToDate = $_.UpToDate } })
         ThirdPartyAntivirus = (@($states | Where-Object { $_.Name -notmatch 'Windows Defender|Microsoft Defender' } | ForEach-Object Name | Select-Object -Unique) -join ', ')
         DefenderActive      = $null
         DefenderMode        = $null
@@ -233,7 +241,8 @@ function Read-ThemisAntivirusFact {
         $mp = Invoke-ThemisSafe { Get-MpComputerStatus -ErrorAction Stop }
         if ($mp) {
             $facts.DefenderActive = [bool]("$($mp.AMRunningMode)" -eq 'Normal' -and $mp.AntivirusEnabled)
-            $facts.DefenderMode = switch ("$($mp.AMRunningMode)") { 'Normal' { 'Active' } 'Passive Mode' { 'Passive' } 'EDR Block Mode' { 'EDR Block' } default { "$($mp.AMRunningMode)" } }
+            # Always one of the documented values, whatever text this version of Defender uses.
+            $facts.DefenderMode = switch -Regex ("$($mp.AMRunningMode)") { '^Normal$' { 'Active' } 'EDR Block' { 'EDR Block' } 'Passive' { 'Passive' } '^Not running$|^$' { 'Off' } default { 'Unknown' } }
         }
     }
     return $facts
@@ -366,26 +375,17 @@ function Read-ThemisDriversFact {
     [OutputType([hashtable])]
     param()
     $drivers = @(Invoke-ThemisSafe { Get-CimInstance -ClassName Win32_SystemDriver -Filter "State='Running'" -ErrorAction Stop } @())
-    $found = @($drivers | Where-Object { Test-ThemisHwAccessDriver $_.PathName } | ForEach-Object { [System.IO.Path]::GetFileName(($_.PathName -replace '^\\\?\?\\', '')) } | Sort-Object -Unique)
-    return @{ HwAccessDrivers = $found -join ', '; NoHwAccessDrivers = $(if ($drivers.Count) { $found.Count -eq 0 } else { $null }) }
+    $found = @($drivers | Where-Object { Test-ThemisHwAccessDriver $_.PathName } | ForEach-Object {
+            $path = $_.PathName -replace '^\\\?\?\\', ''
+            [pscustomobject]@{ File = [System.IO.Path]::GetFileName($path); Name = "$($_.Name)"; DisplayName = "$($_.DisplayName)"; Path = $path }
+        } | Sort-Object File -Unique)
+    # "file (name shown by Windows)", as in the driver list of System Information.
+    $text = @($found | ForEach-Object { if ($_.DisplayName -and $_.DisplayName -ne $_.Name) { "$($_.File) ($($_.DisplayName))" } else { $_.File } })
+    return @{ HwAccessDrivers = $text -join ', '; HwAccessDriverList = $found; NoHwAccessDrivers = $(if ($drivers.Count) { $found.Count -eq 0 } else { $null }) }
 }
 
-function Get-ThemisServiceProgram {
-    <#
-    .SYNOPSIS
-        The program of a service command line: the quoted part, or up to the first ".exe".
-    #>
-    [CmdletBinding()]
-    [OutputType([string])]
-    param([AllowEmptyString()][string]$PathName)
-    if (-not $PathName) { return $null }
-    $p = $PathName.Trim()
-    if ($p.StartsWith('"')) { $end = $p.IndexOf('"', 1); if ($end -gt 1) { return $p.Substring(1, $end - 1) } return $null }
-    if ($p -match '^(.+?\.exe)\b') { return $Matches[1] }
-    return ($p -split '\s+')[0]
-}
-
-# Signatures already checked in this session, by path, size and modification time: checking them takes seconds.
+# Signatures already checked, by path, size and modification time: checking them takes seconds. Export-ThemisSignatureCache
+# and Import-ThemisSignatureCache keep them between sessions.
 $script:ThemisSignatureCache = @{}
 
 function Read-ThemisServicesFact {
@@ -410,6 +410,108 @@ function Read-ThemisServicesFact {
             if ($script:ThemisSignatureCache[$key] -ne 'Valid') { "$($service.Name) ($exe)" }
         })
     return @{ UnsignedSystemServices = $unsigned -join ', '; SystemServicesSigned = $(if ($services.Count) { $unsigned.Count -eq 0 } else { $null }) }
+}
+
+function Read-ThemisConsoleFact {
+    <#
+    .SYNOPSIS
+        Facts about the account signed in at the screen.
+    .DESCRIPTION
+        An elevated session can belong to another administrator account (Run as administrator with other
+        credentials): rules about "your account" are about the one at the screen.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param()
+    $user = Invoke-ThemisSafe { "$((Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop).UserName)" }
+    $facts = @{ ConsoleUser = $user; ConsoleUserSid = $null; ConsoleUserIsAdministrator = $null }
+    if (-not $user) { return $facts }
+    $sid = Invoke-ThemisSafe { (New-Object System.Security.Principal.NTAccount($user)).Translate([System.Security.Principal.SecurityIdentifier]).Value }
+    $facts.ConsoleUserSid = $sid
+    if (-not $sid) { return $facts }
+    if ($sid -eq [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value) {
+        # The account of this session: its token says it, nested groups included.
+        $facts.ConsoleUserIsAdministrator = (Read-ThemisFactSource -Source 'OS').UserIsAdministrator
+    }
+    else {
+        $members = Invoke-ThemisSafe { Get-ThemisLocalGroupMemberSid -Group 'S-1-5-32-544' }
+        if ($null -ne $members) { $facts.ConsoleUserIsAdministrator = @($members) -contains $sid }
+    }
+    return $facts
+}
+
+# The few certificates Windows itself keeps in the Root store; public authorities come from Windows Update into AuthRoot.
+# Anything else in Root was added by a person or a program.
+$script:ThemisBuiltinRoots = @(
+    '0119E81BE9A14CD8E22F40AC118C687ECBA3F4D8', '06F1AA330B927B753A40E68CDF22E34BCBEF3352', '18F7C1FCC3090203FD5BAA2F861A754976C8DD25',
+    '245C97DF7514E7CF2DF8BE72AE957B9E04741E85', '31F9FC8BA3805986B721EA7295C65B3A44534274', '3B1EFD3A66EA28B16697394703A72CA340A05BD5',
+    '7F88CD7223F3C813818C994614A89C99FA3B5247', '8F43288AD272F3103B6FB1428485EA3014C0BCFE', '92B46C76E13054E104F230517E6E504D43AB10B5',
+    'A43489159A520F0D93D032CCAF37E7FE20A8B419', 'BE36A4562FB2EE05DBB3D32323ADF445084ED656', 'CDD4EEAE6000AC7F40C3802C171E30148030C072',
+    'DF3C24F9BFD666761B268073FE06D1CC8D4F82A4', '73A5E64A3BFF8316FF0EDCCC618A906E4EAE4D74', 'F40042E2E5F7E8EF8189FED15519AECE42C3BFA2'
+)
+# Antivirus products add their own root to inspect encrypted web traffic. Themis reports it, and never removes it.
+$script:ThemisAntivirusRootPattern = '(?i)Bitdefender|Kaspersky|ESET|Avast|AVG |Norton|Symantec Endpoint|McAfee|Sophos|Trend Micro|Avira|F-Secure|Malwarebytes|Panda|G DATA|Webroot|Emsisoft'
+$script:ThemisHyperVCertOid = '1.3.6.1.4.1.311.62.1.1.1'
+
+function Test-ThemisAntivirusRoot {
+    <#
+    .SYNOPSIS
+        True when a certificate subject names an antivirus product.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param([AllowEmptyString()][string]$Subject)
+    return [bool]($Subject -match $script:ThemisAntivirusRootPattern)
+}
+
+function Test-ThemisHyperVRootCertificate {
+    <#
+    .SYNOPSIS
+        True for the self-signed certificate Hyper-V puts in the Root store of the machine for connections to virtual machines.
+    .DESCRIPTION
+        Recognized by everything at once: machine store, issuer and subject equal to the computer name, the Hyper-V
+        extension, server authentication only, not a certificate authority, and Hyper-V installed.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param($Certificate, [string]$Store, [string]$ComputerName = $env:COMPUTERNAME, [bool]$HyperVInstalled)
+    if (-not $Certificate -or -not $HyperVInstalled -or $Store -ne 'LocalMachine' -or -not $ComputerName) { return $false }
+    $cn = "CN=$ComputerName"
+    if ($Certificate.Subject -ne $cn -or $Certificate.Issuer -ne $cn) { return $false }
+    $extensions = @($Certificate.Extensions)
+    if (-not @($extensions | Where-Object { $_.Oid.Value -eq $script:ThemisHyperVCertOid }).Count) { return $false }
+    $eku = @($extensions | Where-Object { $_.Oid.Value -eq '2.5.29.37' })
+    if ($eku.Count -ne 1) { return $false }
+    $uses = @($eku[0].EnhancedKeyUsages | ForEach-Object Value)
+    if ($uses.Count -ne 1 -or $uses[0] -ne '1.3.6.1.5.5.7.3.1') { return $false }
+    foreach ($constraint in @($extensions | Where-Object { $_.Oid.Value -eq '2.5.29.19' })) { if ($constraint.CertificateAuthority) { return $false } }
+    return $true
+}
+
+function Read-ThemisRootCertificatesFact {
+    <#
+    .SYNOPSIS
+        Root certificates added outside those of Windows. Only reads: an antivirus root is reported, never removed.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param()
+    $hyperV = [bool](Get-Service -Name vmms -ErrorAction SilentlyContinue)
+    $found = foreach ($store in 'LocalMachine', 'CurrentUser') {
+        $hive = if ($store -eq 'LocalMachine') { 'HKLM' } else { 'HKCU' }
+        # The registry store itself: Cert:\...\Root also shows what Group Policy and the enterprise stores add.
+        $thumbs = @(Invoke-ThemisSafe { Get-ChildItem -LiteralPath "${hive}:\SOFTWARE\Microsoft\SystemCertificates\ROOT\Certificates" -ErrorAction Stop | ForEach-Object PSChildName } @())
+        foreach ($thumb in $thumbs) {
+            if ($thumb -in $script:ThemisBuiltinRoots) { continue }
+            $cert = Get-Item -LiteralPath "Cert:\$store\Root\$thumb" -ErrorAction SilentlyContinue
+            if (-not $cert) { continue }
+            if (Test-ThemisHyperVRootCertificate -Certificate $cert -Store $store -HyperVInstalled $hyperV) { continue }
+            $name = (($cert.Subject -split ',\s*(?=[A-Z]+=)') | Where-Object { $_ -match '^(CN|OU|O|E)=' } | Select-Object -First 1) -replace '^(CN|OU|O|E)=', ''
+            [pscustomobject]@{ Store = $store; Thumbprint = $thumb; Name = $name; Subject = $cert.Subject; NotAfter = $cert.NotAfter; Antivirus = (Test-ThemisAntivirusRoot -Subject $cert.Subject) }
+        }
+    }
+    $found = @($found)
+    return @{ AddedRootCertificates = $found; NoAddedRootCerts = (@($found | Where-Object { -not $_.Antivirus }).Count -eq 0) }
 }
 
 function Read-ThemisFactSource {
@@ -437,6 +539,8 @@ function Read-ThemisFactSource {
             'Devices' { Read-ThemisDevicesFact }
             'Drivers' { Read-ThemisDriversFact }
             'Services' { Read-ThemisServicesFact }
+            'Console' { Read-ThemisConsoleFact }
+            'RootCertificates' { Read-ThemisRootCertificatesFact }
             default { throw "Unknown fact source '$Source'." }
         }
         if ($facts -isnot [hashtable]) { $facts = @($facts | Where-Object { $_ -is [hashtable] }) | Select-Object -Last 1 }

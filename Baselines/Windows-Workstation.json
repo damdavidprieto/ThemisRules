@@ -63,6 +63,7 @@
             "Value": 0,
             "Type": "DWord",
             "Description": "Limits pass-the-hash with local administrator accounts.",
+            "Caution": "Remote administration with a local account other than the built-in Administrator stops working over the network: its token is filtered, so PsExec, administrative shares and remote services no longer get administrator rights with it. Enforce only where nothing depends on that.",
             "Default": 0
         },
         {
@@ -116,6 +117,7 @@
             "MacroLevel": "L1",
             "Name": "Send NTLMv2 responses only; refuse LM and NTLM",
             "Severity": "High",
+            "Caution": "Clients and servers that only offer NTLMv1 or LM cannot authenticate with this machine (old NAS devices, printers, legacy servers). Audit WIN-CRED-013 and WIN-CRED-014 first to see who still uses them.",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
             "ValueName": "LmCompatibilityLevel",
             "Value": 5,
@@ -147,6 +149,7 @@
             "ID": "WIN-CRED-005",
             "MacroLevel": "L1",
             "Name": "Block anonymous enumeration of SAM accounts and shares",
+            "Caution": "Anonymous enumeration of accounts and shares is blocked: old network tools, and some trust setups, that rely on it stop working.",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
             "ValueName": "RestrictAnonymous",
             "Value": 1,
@@ -176,6 +179,7 @@
             "MacroLevel": "L1",
             "Name": "Blank passwords only work for console logons",
             "Severity": "High",
+            "Caution": "Local accounts with an empty password can only sign in at the console, not over the network.",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
             "ValueName": "LimitBlankPasswordUse",
             "Value": 1,
@@ -202,13 +206,15 @@
             "ValueName": "SMB1",
             "Value": 0,
             "Type": "DWord",
-            "Description": "SMBv1 was the vector of WannaCry and NotPetya."
+            "Description": "SMBv1 was the vector of WannaCry and NotPetya.",
+            "Caution": "This machine stops serving shares to SMBv1-only clients (old NAS devices, printers, Windows XP or Server 2003). The SMBv1 client is a separate Windows feature."
         },
         {
             "ID": "WIN-NET-002",
             "MacroLevel": "L1",
             "Name": "SMB server: always sign communications",
             "Severity": "High",
+            "Caution": "Clients that do not sign SMB traffic cannot connect to the shares of this machine.",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters",
             "ValueName": "RequireSecuritySignature",
             "Value": 1,
@@ -219,6 +225,7 @@
             "MacroLevel": "L1",
             "Name": "SMB client: always sign communications",
             "Severity": "High",
+            "Caution": "This machine cannot connect to SMB servers that do not offer signing, such as some old NAS devices.",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanWorkstation\\Parameters",
             "ValueName": "RequireSecuritySignature",
             "Value": 1,
@@ -229,6 +236,7 @@
             "MacroLevel": "L1",
             "Name": "SMB client: never send unencrypted passwords to third-party servers",
             "Severity": "High",
+            "Caution": "Old servers that need plain-text SMB passwords stop accepting this machine.",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanWorkstation\\Parameters",
             "ValueName": "EnablePlainTextPassword",
             "Value": 0,
@@ -260,6 +268,7 @@
             "MacroLevel": "L1",
             "Name": "Remote Desktop: require Network Level Authentication",
             "Severity": "High",
+            "Caution": "Remote Desktop clients without Network Level Authentication cannot connect to this machine.",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
             "ValueName": "UserAuthentication",
             "Value": 1,
@@ -269,6 +278,7 @@
             "ID": "WIN-RDP-002",
             "MacroLevel": "L1",
             "Name": "Remote Desktop: high encryption level",
+            "Caution": "Very old Remote Desktop clients that do not support high encryption cannot connect.",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
             "ValueName": "MinEncryptionLevel",
             "Value": 3,
@@ -297,6 +307,7 @@
             "MacroLevel": "L1",
             "Name": "WinRM client: no Basic authentication",
             "Severity": "High",
+            "Caution": "Scripts on this machine cannot use WinRM with Basic authentication to other machines.",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Client",
             "ValueName": "AllowBasic",
             "Value": 0,
@@ -307,6 +318,7 @@
             "MacroLevel": "L1",
             "Name": "WinRM client: no unencrypted traffic",
             "Severity": "High",
+            "Caution": "Scripts on this machine cannot use WinRM over unencrypted traffic to other machines.",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Client",
             "ValueName": "AllowUnencryptedTraffic",
             "Value": 0,
@@ -317,6 +329,7 @@
             "MacroLevel": "L1",
             "Name": "WinRM service: no Basic authentication",
             "Severity": "High",
+            "Caution": "Remote WinRM clients cannot use Basic authentication to this machine.",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service",
             "ValueName": "AllowBasic",
             "Value": 0,
@@ -327,6 +340,7 @@
             "MacroLevel": "L1",
             "Name": "WinRM service: no unencrypted traffic",
             "Severity": "High",
+            "Caution": "Remote WinRM clients cannot use unencrypted traffic to this machine.",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service",
             "ValueName": "AllowUnencryptedTraffic",
             "Value": 0,
@@ -1049,6 +1063,7 @@
             "ID": "WIN-ACC-011",
             "MacroLevel": "L2",
             "Name": "Lock out the built-in Administrator too",
+            "Caution": "Lets the built-in Administrator account be locked out by failed sign-ins. If that happens while no other administrator can sign in, the machine has no administrator available. Keep it off unless the lockout is required.",
             "Key": "AllowAdministratorLockout",
             "Value": 1
         }
@@ -1196,6 +1211,7 @@
             "ID": "WIN-URA-017",
             "MacroLevel": "L1",
             "Name": "Allow log on through Remote Desktop: Administrators and Remote Desktop Users",
+            "Caution": "Replaces the list: other accounts and groups lose Remote Desktop sign-in.",
             "Right": "SeRemoteInteractiveLogonRight",
             "Principals": [
                 "S-1-5-32-544",
@@ -1282,12 +1298,14 @@
                 "S-1-5-113"
             ],
             "Comparison": "Includes",
-            "Description": "Blocks lateral movement with local accounts. Remote administration must use domain accounts."
+            "Description": "Blocks lateral movement with local accounts. Remote administration must use domain accounts.",
+            "Caution": "Denies network sign-in to local accounts. Administrators who use a local account for remote administration (PsExec, administrative shares, WinRM) lose that access."
         },
         {
             "ID": "WIN-URA-026",
             "MacroLevel": "L2",
             "Name": "Deny log on through Remote Desktop: local accounts",
+            "Caution": "Denies Remote Desktop sign-in to local accounts.",
             "Right": "SeDenyRemoteInteractiveLogonRight",
             "Principals": [
                 "S-1-5-113"
@@ -1303,7 +1321,8 @@
                 "S-1-5-32-544",
                 "S-1-5-32-555"
             ],
-            "Description": "Other users can no longer open shares on this computer."
+            "Description": "Other users can no longer open shares on this computer.",
+            "Caution": "Replaces the list: only Administrators and Remote Desktop Users keep network sign-in, so other users lose access to shares and network services. Review before enforcing at L2."
         },
         {
             "ID": "WIN-URA-028",
@@ -1365,6 +1384,7 @@
             "MacroLevel": "L1",
             "Name": "Firewall Domain: Enabled = True",
             "Severity": "High",
+            "Caution": "Turning the firewall on blocks inbound connections that no rule allows. Enable the rules for WinRM, SMB or Remote Desktop first, or remote administration stops.",
             "Profile": "Domain",
             "Setting": "Enabled",
             "Value": "True"
@@ -1407,6 +1427,7 @@
             "MacroLevel": "L1",
             "Name": "Firewall Private: Enabled = True",
             "Severity": "High",
+            "Caution": "Turning the firewall on blocks inbound connections that no rule allows. Enable the rules for WinRM, SMB or Remote Desktop first, or remote administration stops.",
             "Profile": "Private",
             "Setting": "Enabled",
             "Value": "True"
@@ -1449,6 +1470,7 @@
             "MacroLevel": "L1",
             "Name": "Firewall Public: Enabled = True",
             "Severity": "High",
+            "Caution": "Turning the firewall on blocks inbound connections that no rule allows. Enable the rules for WinRM, SMB or Remote Desktop first, or remote administration stops.",
             "Profile": "Public",
             "Setting": "Enabled",
             "Value": "True"
@@ -1494,7 +1516,8 @@
             "Name": "RemoteRegistry",
             "State": "Stopped",
             "StartupType": "Disabled",
-            "Description": "Remote Registry: lets other computers read and change this registry."
+            "Description": "Remote Registry: lets other computers read and change this registry.",
+            "Caution": "Other machines can no longer read or edit this machine's registry (remote Registry Editor, some management tools)."
         },
         {
             "ID": "WIN-SVC-002",

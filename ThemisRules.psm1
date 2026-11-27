@@ -12,4 +12,4 @@ foreach ($folder in 'Core', 'Providers', 'Public') {
 Initialize-ThemisProviders
 
 # Keep in sync with FunctionsToExport in ThemisRules.psd1 (Tests/QA checks it).
-Export-ModuleMember -Function 'Invoke-ThemisPolicy', 'Invoke-ThemisRule', 'Export-ThemisReport', 'Get-ThemisBackup', 'Get-ThemisBaseline', 'Get-ThemisFact', 'Get-ThemisProvider', 'New-ThemisPolicy', 'Restore-ThemisBackup', 'Test-ThemisPolicy', 'Compare-ThemisResult'
+Export-ModuleMember -Function 'Invoke-ThemisPolicy', 'Invoke-ThemisRule', 'Export-ThemisReport', 'Get-ThemisBackup', 'Get-ThemisBaseline', 'Get-ThemisFact', 'Get-ThemisProvider', 'Get-ThemisServiceProgram', 'Export-ThemisSignatureCache', 'Import-ThemisSignatureCache', 'New-ThemisPolicy', 'Restore-ThemisBackup', 'Test-ThemisPolicy', 'Compare-ThemisResult'

@@ -150,7 +150,7 @@ A policy is a JSON file with a `Meta` section and one array per rule type:
 | `AppLockerRules` | `Collection` (`Exe`, `Script`, `Msi`, `Dll`, `Appx`), `Mode` (`AuditOnly`, `Enabled`, `NotConfigured`), `DefaultRules`, `AllowPublishers`, `AllowPaths`, `AllowPathExceptions` | One AppLocker rule collection. The standard rules let everyone run what is in the Windows and Program Files folders, and administrators anything; programs and scripts in Downloads, Temp or inside a `.zip` are not allowed. `AllowPathExceptions` leaves paths out of the `AllowPaths` rules: allowing `%OSDRIVE%\Users\*` except Downloads and Temp keeps the programs installed in user folders working and blocks what is downloaded. Start with `AuditOnly`: Windows logs what would be blocked in `Microsoft-Windows-AppLocker/*` without blocking it. Themis owns the rules named `Themis: ...` and keeps the others. AppLocker only acts while the Application Identity service (`AppIDSvc`) runs. Needs elevation. |
 
 Every rule takes `ID`, `Name` and optionally `MacroLevel` (`L1`-`L5`), `Description`, `Severity` (`Low`, `Medium`,
-`High` or `Critical`; `Medium` when not given) and `References` (benchmark IDs or documentation addresses). Values can
+`High` or `Critical`; `Medium` when not given) and `References` (benchmark IDs or documentation addresses). `Caution` says what the rule can break when it is enforced; the Windows workstation baseline marks the rules that can cut off remote administration or network access. Values can
 use `Comparison`: `Equal` (default), `AtLeast`, `AtMost`, `Between` (with `Min` and `Max`) or `In`
 (`Value` is a list); Enforce writes `Value`, or `WriteValue` when given. Any rule can set `RequiresRestart` when its
 change only takes effect after a restart.

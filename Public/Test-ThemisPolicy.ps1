@@ -1,5 +1,5 @@
 # Fields that every rule may have, whatever its type.
-$script:ThemisCommonRuleFields = 'ID', 'Name', 'MacroLevel', 'Description', 'AppliesIf', 'DependsOn', 'RequiresRestart', 'Severity', 'References'
+$script:ThemisCommonRuleFields = 'ID', 'Name', 'MacroLevel', 'Description', 'AppliesIf', 'DependsOn', 'RequiresRestart', 'Severity', 'References', 'Caution'
 
 function Test-ThemisPolicy {
     <#
@@ -11,27 +11,45 @@ function Test-ThemisPolicy {
         a required field, and fields that the schema does not know. An unknown field is usually a typo, such as
         "Vaule" for "Value": without this check the rule would run without it and do something else than meant.
         Fields starting with "_" are ignored (the engine adds them), and so are the fields every rule may have (ID,
-        Name, MacroLevel, Description, AppliesIf, DependsOn, RequiresRestart, Severity and References). A Severity
+        Name, MacroLevel, Description, AppliesIf, DependsOn, RequiresRestart, Severity, References and Caution). A Severity
         other than Low, Medium, High or Critical is a problem too. Returns nothing when the policy is valid.
         Invoke-ThemisPolicy -Strict runs it first and refuses a policy with problems.
 
     .PARAMETER Path
         The policy file.
 
+    .PARAMETER InputObject
+        The policy as an object or hashtable in memory, as ConvertFrom-Json returns it or as you would write it to
+        a file, so a tool that builds policies does not need a temporary file.
+
     .EXAMPLE
         Test-ThemisPolicy -Path .\baseline.json
 
         Lists the problems of the policy, if any.
+
+    .EXAMPLE
+        Test-ThemisPolicy -InputObject @{ Meta = @{ Name = 'Mine'; Version = '1.0.0' }; ServiceRules = @($rule) }
+
+        Checks a policy built in memory.
     #>
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory = $true, Position = 0)]
-        [string]$Path
+        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'Path')]
+        [string]$Path,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'Object')]
+        [object]$InputObject
     )
 
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Policy not found: $Path" }
-    $policy = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($PSCmdlet.ParameterSetName -eq 'Object') {
+        # Through JSON, so a hashtable is checked exactly as the same policy read from a file would be.
+        $policy = $InputObject | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+    }
+    else {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Policy not found: $Path" }
+        $policy = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+    }
     $schemaFile = Join-Path (Join-Path (Split-Path $PSScriptRoot -Parent) 'Schema') 'ThemisPolicy.schema.json'
     $schema = Get-Content -LiteralPath $schemaFile -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($script:ProviderCache.Count -eq 0) { Initialize-ThemisProviders }

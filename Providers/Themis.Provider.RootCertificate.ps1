@@ -3,6 +3,7 @@
 #   Thumbprint  SHA-1 thumbprint of the certificate (40 hexadecimal digits).
 #   Store       LocalMachine (default) or CurrentUser.
 #   Ensure      Absent (default) or Present.
+# The root of an antivirus (Bitdefender, Kaspersky, ESET...) is never removed: Enforce leaves it and says so (Manual).
 #   RawData     The certificate in Base64, for Present (restore rules carry it).
 # A root certificate added by a program lets whoever holds its key impersonate any website or sign any program
 # for this machine. Removing one records the certificate itself, so the restore rule puts it back exactly.
@@ -96,6 +97,12 @@ function Invoke-ThemisRootCertificateRule {
         $result.Status = 'Non-Compliant'
         $result.Reason = if ($current) { "$store root store trusts $($current.Subject) ($thumb); required: not trusted." } else { "$thumb is not in the $store root store; required: trusted." }
         if ($Mode -ne 'Enforce') { return $result }
+        # An antivirus uses its root to inspect encrypted traffic: removing it here would break it without switching it off.
+        if ($ensure -eq 'Absent' -and $current -and (Test-ThemisAntivirusRoot -Subject $current.Subject)) {
+            $result.Status = 'Manual'
+            $result.Reason = "$($current.Subject) belongs to an antivirus, so Themis does not remove it: turn off the scanning of encrypted connections in the antivirus, which removes it."
+            return $result
+        }
         if ($store -eq 'LocalMachine' -and -not (Test-ThemisElevated)) {
             $result.Status = 'NeedsElevation'
             $result.Reason = 'Changing the LocalMachine root store requires an elevated session (Run as administrator).'

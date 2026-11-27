@@ -26,9 +26,11 @@ function Invoke-ThemisRule {
         The rule: a hashtable or object with the fields of that type (see the README).
 
     .PARAMETER InputObject
-        Several rules at once, from the pipeline: objects or hashtables with Type and Rule. They share one read cache
-        (the security policy and the audit policy are read once for all of them), facts are read once, and each
-        result is passed to the next rules for DependsOn.
+        Several rules at once, from the pipeline: objects or hashtables with Type and Rule, and optionally Tag. They
+        share one read cache (the security policy and the audit policy are read once for all of them), facts are read
+        once, and each result is passed to the next rules for DependsOn. Each result leaves the command as soon as its
+        rule is done, so the caller can show progress; it has its own Previous, to keep in a history and undo rule by
+        rule, and the Tag of its item (anything: the caller's own ID or object) to match it with what the caller had.
 
     .PARAMETER Mode
         Audit (check only, the default) or Enforce (apply the rule).
@@ -65,6 +67,19 @@ function Invoke-ThemisRule {
         ) | Invoke-ThemisRule
 
         Audits two rules, reading the security policy and the audit policy once.
+
+    .EXAMPLE
+        $i = 0
+        $rules | ForEach-Object { @{ Type = $_.ThemisType; Rule = $_.ThemisRule; Tag = $_ } } |
+            Invoke-ThemisRule -Mode Enforce -KeepReadCache | ForEach-Object {
+                $i++; Write-Progress -Activity 'Applying' -Status $_.Tag.Title -PercentComplete (100 * $i / $rules.Count)
+                if ($_.Previous) { Add-MyHistory -Rule $_.Tag -Undo $_.Previous }   # your own history
+                $_
+            }
+
+        The engine of another tool: progress after every rule, the restore rules of each change kept in the tool's
+        history, and DependsOn between the rules. Later, passing each saved restore rule to Invoke-ThemisRule
+        -Mode Enforce undoes that one change.
     #>
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium', DefaultParameterSetName = 'One')]
     [OutputType([pscustomobject])]
@@ -96,6 +111,7 @@ function Invoke-ThemisRule {
         if (-not $KeepReadCache) { $script:ThemisRunCache = @{} }
         $known = @{}
         foreach ($key in $Prior.Keys) { $known[$key] = $Prior[$key] }
+        $tag = $null
     }
 
     process {
@@ -103,6 +119,7 @@ function Invoke-ThemisRule {
             $item = if ($InputObject -is [System.Collections.IDictionary]) { [pscustomobject]$InputObject } else { $InputObject }
             $Type = "$($item.Type)"
             $Rule = $item.Rule
+            $tag = $item.Tag
             if (-not $Type -or $null -eq $Rule) { throw 'Each item of -InputObject needs Type and Rule.' }
         }
         if (-not $script:ProviderCache.ContainsKey($Type)) {
@@ -134,6 +151,7 @@ function Invoke-ThemisRule {
             Restorable      = $res.Restorable
             RequiresRestart = $res.RequiresRestart
             Verified        = $res.Verified
+            Tag             = $tag
         }
     }
 }
