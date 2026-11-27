@@ -1,7 +1,7 @@
 {
     "Meta": {
         "Name": "Windows workstation baseline",
-        "Version": "1.1.0",
+        "Version": "2.0.0",
         "Author": "ThemisRules",
         "AppliesTo": "Windows 10 and Windows 11, standalone or workgroup machines. On domain-joined machines Group Policy usually defines these settings: use the baseline to audit them.",
         "Description": "Security settings commonly recommended by the Microsoft Security Baselines and the CIS Benchmarks for Windows. L1: safe for any machine. L2: stronger, may affect compatibility or convenience. L3: high security, turns features off. Audit first, then enforce level by level.",
@@ -15,6 +15,7 @@
             "ID": "WIN-UAC-001",
             "MacroLevel": "L1",
             "Name": "UAC: run all administrators in Admin Approval Mode",
+            "Severity": "Critical",
             "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
             "ValueName": "EnableLUA",
             "Value": 1,
@@ -26,6 +27,7 @@
             "ID": "WIN-UAC-002",
             "MacroLevel": "L1",
             "Name": "UAC: prompt administrators for consent on the secure desktop",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
             "ValueName": "ConsentPromptBehaviorAdmin",
             "Value": 2,
@@ -55,6 +57,7 @@
             "ID": "WIN-UAC-005",
             "MacroLevel": "L1",
             "Name": "UAC: restrict local administrator accounts on network logons",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
             "ValueName": "LocalAccountTokenFilterPolicy",
             "Value": 0,
@@ -89,6 +92,7 @@
             "ID": "WIN-SYS-002",
             "MacroLevel": "L1",
             "Name": "Disable automatic logon",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon",
             "ValueName": "AutoAdminLogon",
             "Value": "0",
@@ -100,6 +104,7 @@
             "ID": "WIN-CRED-001",
             "MacroLevel": "L1",
             "Name": "Do not keep plain-text passwords in memory (WDigest)",
+            "Severity": "Critical",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest",
             "ValueName": "UseLogonCredential",
             "Value": 0,
@@ -110,6 +115,7 @@
             "ID": "WIN-CRED-002",
             "MacroLevel": "L1",
             "Name": "Send NTLMv2 responses only; refuse LM and NTLM",
+            "Severity": "High",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
             "ValueName": "LmCompatibilityLevel",
             "Value": 5,
@@ -119,6 +125,7 @@
             "ID": "WIN-CRED-003",
             "MacroLevel": "L1",
             "Name": "Do not store LAN Manager password hashes",
+            "Severity": "High",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
             "ValueName": "NoLMHash",
             "Value": 1,
@@ -129,6 +136,7 @@
             "ID": "WIN-CRED-004",
             "MacroLevel": "L1",
             "Name": "Block anonymous enumeration of SAM accounts",
+            "Severity": "High",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
             "ValueName": "RestrictAnonymousSAM",
             "Value": 1,
@@ -167,6 +175,7 @@
             "ID": "WIN-CRED-008",
             "MacroLevel": "L1",
             "Name": "Blank passwords only work for console logons",
+            "Severity": "High",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
             "ValueName": "LimitBlankPasswordUse",
             "Value": 1,
@@ -177,6 +186,7 @@
             "ID": "WIN-CRED-009",
             "MacroLevel": "L2",
             "Name": "Run LSA as a protected process",
+            "Severity": "High",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa",
             "ValueName": "RunAsPPL",
             "Value": 1,
@@ -187,6 +197,7 @@
             "ID": "WIN-NET-001",
             "MacroLevel": "L1",
             "Name": "Disable SMBv1 on the SMB server",
+            "Severity": "Critical",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters",
             "ValueName": "SMB1",
             "Value": 0,
@@ -197,6 +208,7 @@
             "ID": "WIN-NET-002",
             "MacroLevel": "L1",
             "Name": "SMB server: always sign communications",
+            "Severity": "High",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters",
             "ValueName": "RequireSecuritySignature",
             "Value": 1,
@@ -206,6 +218,7 @@
             "ID": "WIN-NET-003",
             "MacroLevel": "L1",
             "Name": "SMB client: always sign communications",
+            "Severity": "High",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanWorkstation\\Parameters",
             "ValueName": "RequireSecuritySignature",
             "Value": 1,
@@ -215,6 +228,7 @@
             "ID": "WIN-NET-004",
             "MacroLevel": "L1",
             "Name": "SMB client: never send unencrypted passwords to third-party servers",
+            "Severity": "High",
             "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanWorkstation\\Parameters",
             "ValueName": "EnablePlainTextPassword",
             "Value": 0,
@@ -245,6 +259,7 @@
             "ID": "WIN-RDP-001",
             "MacroLevel": "L1",
             "Name": "Remote Desktop: require Network Level Authentication",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
             "ValueName": "UserAuthentication",
             "Value": 1,
@@ -281,6 +296,7 @@
             "ID": "WIN-WRM-001",
             "MacroLevel": "L1",
             "Name": "WinRM client: no Basic authentication",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Client",
             "ValueName": "AllowBasic",
             "Value": 0,
@@ -290,6 +306,7 @@
             "ID": "WIN-WRM-002",
             "MacroLevel": "L1",
             "Name": "WinRM client: no unencrypted traffic",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Client",
             "ValueName": "AllowUnencryptedTraffic",
             "Value": 0,
@@ -299,6 +316,7 @@
             "ID": "WIN-WRM-003",
             "MacroLevel": "L1",
             "Name": "WinRM service: no Basic authentication",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service",
             "ValueName": "AllowBasic",
             "Value": 0,
@@ -308,6 +326,7 @@
             "ID": "WIN-WRM-004",
             "MacroLevel": "L1",
             "Name": "WinRM service: no unencrypted traffic",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service",
             "ValueName": "AllowUnencryptedTraffic",
             "Value": 0,
@@ -317,6 +336,7 @@
             "ID": "WIN-MAL-001",
             "MacroLevel": "L1",
             "Name": "Turn off AutoPlay on all drives",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
             "ValueName": "NoDriveTypeAutoRun",
             "Value": 255,
@@ -326,6 +346,7 @@
             "ID": "WIN-MAL-002",
             "MacroLevel": "L1",
             "Name": "Do not run AutoRun commands",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
             "ValueName": "NoAutorun",
             "Value": 1,
@@ -335,6 +356,7 @@
             "ID": "WIN-MAL-003",
             "MacroLevel": "L1",
             "Name": "Windows Installer: never install with elevated privileges",
+            "Severity": "Critical",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Installer",
             "ValueName": "AlwaysInstallElevated",
             "Value": 0,
@@ -402,6 +424,7 @@
             "ID": "WIN-LOG-003",
             "MacroLevel": "L1",
             "Name": "PowerShell script block logging",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging",
             "ValueName": "EnableScriptBlockLogging",
             "Value": 1,
@@ -461,6 +484,7 @@
             "ID": "WIN-DEF-001",
             "MacroLevel": "L1",
             "Name": "Defender: real-time protection not turned off",
+            "Severity": "Critical",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Real-Time Protection",
             "ValueName": "DisableRealtimeMonitoring",
             "Value": 0,
@@ -471,6 +495,7 @@
             "ID": "WIN-DEF-002",
             "MacroLevel": "L1",
             "Name": "Defender: behavior monitoring not turned off",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Real-Time Protection",
             "ValueName": "DisableBehaviorMonitoring",
             "Value": 0,
@@ -528,6 +553,7 @@
             "ID": "WIN-ASR-001",
             "MacroLevel": "L1",
             "Name": "ASR: block credential stealing from LSASS",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Windows Defender Exploit Guard\\ASR\\Rules",
             "ValueName": "9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2",
             "Value": "1",
@@ -538,6 +564,7 @@
             "ID": "WIN-ASR-002",
             "MacroLevel": "L1",
             "Name": "ASR: block abuse of exploited vulnerable signed drivers",
+            "Severity": "High",
             "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Windows Defender Exploit Guard\\ASR\\Rules",
             "ValueName": "56a863a9-875e-4185-98a7-b882c64b5ce5",
             "Value": "1",
@@ -635,6 +662,157 @@
             "ValueName": "7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c",
             "Value": "1",
             "Type": "String"
+        },
+        {
+            "ID": "WIN-PRT-001",
+            "MacroLevel": "L1",
+            "Name": "Only administrators can install printer drivers (Point and Print)",
+            "Severity": "High",
+            "Description": "PrintNightmare: a standard user connecting to a printer must not be able to install a driver, which runs as SYSTEM. Windows does this by default since August 2021.",
+            "Type": "DWord",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Printers\\PointAndPrint",
+            "ValueName": "RestrictDriverInstallationToAdministrators",
+            "Value": 1,
+            "Default": 1
+        },
+        {
+            "ID": "WIN-PRT-002",
+            "MacroLevel": "L2",
+            "Name": "Redirection Guard for the Print Spooler",
+            "Description": "Stops the Print Spooler from following file system redirections, a common way to turn a spooler bug into a privilege escalation.",
+            "Type": "DWord",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Printers",
+            "ValueName": "RedirectionguardPolicy",
+            "Value": 1
+        },
+        {
+            "ID": "WIN-PRT-003",
+            "MacroLevel": "L2",
+            "Name": "Printer connections use RPC over TCP",
+            "Description": "RPC over TCP is authenticated and can be encrypted; named pipes over SMB are the older path that printing attacks use.",
+            "Type": "DWord",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Printers\\RPC",
+            "ValueName": "RpcUseNamedPipeProtocol",
+            "Value": 0
+        },
+        {
+            "ID": "WIN-KRB-001",
+            "MacroLevel": "L1",
+            "Name": "Kerberos uses AES only (no DES or RC4)",
+            "Severity": "High",
+            "Description": "RC4 Kerberos tickets can be cracked offline (Kerberoasting). AES128, AES256 and future types only. Matters on domain-joined machines.",
+            "Type": "DWord",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\Kerberos\\Parameters",
+            "ValueName": "SupportedEncryptionTypes",
+            "Value": 2147483640
+        },
+        {
+            "ID": "WIN-CRED-012",
+            "MacroLevel": "L2",
+            "Name": "Memory integrity (HVCI) on",
+            "Severity": "High",
+            "Description": "Only signed code can run in the kernel, checked by the hypervisor: a vulnerable driver cannot be used to load unsigned code. This is the switch of Windows Security (Core isolation); some old drivers do not load with it.",
+            "Type": "DWord",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedCodeIntegrity",
+            "ValueName": "Enabled",
+            "Value": 1,
+            "AppliesIf": {
+                "VbsCapable": true
+            },
+            "RequiresRestart": true
+        },
+        {
+            "ID": "WIN-CRED-013",
+            "MacroLevel": "L1",
+            "Name": "Incoming NTLM traffic is audited",
+            "Description": "Logs every incoming NTLM authentication (Microsoft-Windows-NTLM/Operational), so what still needs NTLM is known before it is turned off.",
+            "Type": "DWord",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\MSV1_0",
+            "ValueName": "AuditReceivingNTLMTraffic",
+            "Value": 2
+        },
+        {
+            "ID": "WIN-CRED-014",
+            "MacroLevel": "L1",
+            "Name": "Outgoing NTLM traffic is audited",
+            "Description": "Logs NTLM authentications to other servers without blocking them.",
+            "Type": "DWord",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\MSV1_0",
+            "ValueName": "RestrictSendingNTLMTraffic",
+            "Value": 1
+        },
+        {
+            "ID": "WIN-SYS-003",
+            "MacroLevel": "L1",
+            "Name": "No MPR notifications with the logon password",
+            "Severity": "High",
+            "Description": "Network providers receive the password of every logon in clear text through MPR notifications; a malicious provider can collect them.",
+            "Type": "DWord",
+            "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+            "ValueName": "EnableMPR",
+            "Value": 0
+        },
+        {
+            "ID": "WIN-SYS-004",
+            "MacroLevel": "L1",
+            "Name": "sudo is off",
+            "Description": "sudo (Windows 11 24H2) lets a non-elevated window run elevated commands; off by default.",
+            "Type": "DWord",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Sudo",
+            "ValueName": "Enabled",
+            "Value": 0,
+            "Default": 0,
+            "AppliesIf": {
+                "OSBuild": {
+                    "ge": 26100
+                }
+            }
+        },
+        {
+            "ID": "WIN-NET-007",
+            "MacroLevel": "L1",
+            "Name": "SMB server slows down failed logons",
+            "Description": "Each failed SMB logon waits two seconds, which makes guessing passwords over SMB impractical. On by default in Windows 11 24H2.",
+            "Type": "DWord",
+            "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters",
+            "ValueName": "EnableAuthRateLimiter",
+            "Value": 1,
+            "Default": 1,
+            "AppliesIf": {
+                "OSBuild": {
+                    "ge": 26100
+                }
+            }
+        },
+        {
+            "ID": "WIN-DEF-008",
+            "MacroLevel": "L1",
+            "Name": "Defender cloud protection (advanced MAPS)",
+            "Description": "Cloud protection detects new malware in seconds instead of waiting for the next signature update.",
+            "Type": "DWord",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Spynet",
+            "ValueName": "SpynetReporting",
+            "Value": 2
+        },
+        {
+            "ID": "WIN-DEF-009",
+            "MacroLevel": "L1",
+            "Name": "Defender sends safe samples automatically",
+            "Description": "Files that may contain personal data are not sent without asking.",
+            "Type": "DWord",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Spynet",
+            "ValueName": "SubmitSamplesConsent",
+            "Value": 1
+        },
+        {
+            "ID": "WIN-DEF-010",
+            "MacroLevel": "L2",
+            "Name": "Defender network protection blocks dangerous sites",
+            "Description": "Blocks connections from any program to sites with a bad reputation, not only from the browser.",
+            "Type": "DWord",
+            "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Windows Defender Exploit Guard\\Network Protection",
+            "ValueName": "EnableNetworkProtection",
+            "Value": 1
         }
     ],
     "AuditPolicyRules": [
@@ -887,6 +1065,7 @@
             "ID": "WIN-URA-002",
             "MacroLevel": "L1",
             "Name": "Act as part of the operating system: nobody",
+            "Severity": "High",
             "Right": "SeTcbPrivilege",
             "Principals": []
         },
@@ -894,6 +1073,7 @@
             "ID": "WIN-URA-003",
             "MacroLevel": "L1",
             "Name": "Create a token object: nobody",
+            "Severity": "High",
             "Right": "SeCreateTokenPrivilege",
             "Principals": []
         },
@@ -922,6 +1102,7 @@
             "ID": "WIN-URA-007",
             "MacroLevel": "L1",
             "Name": "Debug programs: Administrators only",
+            "Severity": "High",
             "Right": "SeDebugPrivilege",
             "Principals": [
                 "S-1-5-32-544"
@@ -932,6 +1113,7 @@
             "ID": "WIN-URA-008",
             "MacroLevel": "L1",
             "Name": "Load and unload device drivers: Administrators only",
+            "Severity": "High",
             "Right": "SeLoadDriverPrivilege",
             "Principals": [
                 "S-1-5-32-544"
@@ -1182,6 +1364,7 @@
             "ID": "WIN-FW-001",
             "MacroLevel": "L1",
             "Name": "Firewall Domain: Enabled = True",
+            "Severity": "High",
             "Profile": "Domain",
             "Setting": "Enabled",
             "Value": "True"
@@ -1223,6 +1406,7 @@
             "ID": "WIN-FW-006",
             "MacroLevel": "L1",
             "Name": "Firewall Private: Enabled = True",
+            "Severity": "High",
             "Profile": "Private",
             "Setting": "Enabled",
             "Value": "True"
@@ -1264,6 +1448,7 @@
             "ID": "WIN-FW-011",
             "MacroLevel": "L1",
             "Name": "Firewall Public: Enabled = True",
+            "Severity": "High",
             "Profile": "Public",
             "Setting": "Enabled",
             "Value": "True"
@@ -1350,6 +1535,21 @@
             "State": "Stopped",
             "StartupType": "Disabled",
             "Description": "WebDAV client: used in NTLM relay attacks; breaks WebDAV mapped drives."
+        }
+    ],
+    "CheckRules": [
+        {
+            "ID": "WIN-CRED-010",
+            "MacroLevel": "L2",
+            "Name": "Credential Guard is running",
+            "Severity": "High",
+            "Description": "Credential Guard keeps the secrets of the LSA in an isolated environment, so tools that read the memory of lsass get nothing useful. Windows 11 22H2 and later turn it on by default on hardware that supports it, unless it was turned off.",
+            "Fact": "CredentialGuardRunning",
+            "Expected": true,
+            "Action": "Turn on Credential Guard (Group Policy: Device Guard > Turn On Virtualization Based Security), then restart",
+            "AppliesIf": {
+                "VbsCapable": true
+            }
         }
     ]
 }

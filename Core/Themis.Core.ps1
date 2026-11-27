@@ -59,6 +59,11 @@ function Invoke-ThemisPolicy {
         A rule with AppliesIf is NotApplicable when its conditions on -Facts are not met, and a rule
         with DependsOn is Skipped when a rule it depends on (evaluated earlier) is not applicable,
         failed, or in Enforce mode is still not compliant.
+        The built-in facts that the rules use (see Get-ThemisFact) and -Facts does not give are read from the
+        machine, once per run; -NoFactCollection turns that off.
+        A rule named in -Exceptions that does not comply is Excepted, and Enforce leaves it as it is.
+        Every result also has Severity (Low, Medium, High or Critical; Medium when the rule does not say),
+        References and Exception.
 
     .PARAMETER PolicyPath
         Path to the policy JSON file.
@@ -84,7 +89,16 @@ function Invoke-ThemisPolicy {
 
     .PARAMETER Facts
         Facts about the machine (a hashtable or an object), used by the AppliesIf conditions of the
-        rules and by Check rules, for example @{ HasPrinters = $false; OSBuild = 26100 }.
+        rules and by Check rules, for example @{ HasPrinters = $false; OSBuild = 26100 }. They win over
+        the facts Themis reads itself.
+
+    .PARAMETER NoFactCollection
+        Do not read built-in facts from the machine: a fact that -Facts does not give is not given.
+
+    .PARAMETER Exceptions
+        Accepted deviations: a JSON file, or objects, with ID and Reason, and optionally Until (yyyy-MM-dd, the last
+        day it is valid) and Owner. A rule with a valid exception that does not comply is Excepted instead of
+        Non-Compliant, and Enforce does not change it. Expired exceptions are ignored with a warning.
 
     .PARAMETER Strict
         Check the policy first with Test-ThemisPolicy and refuse to run it if it has problems, such as an
@@ -114,6 +128,11 @@ function Invoke-ThemisPolicy {
         Invoke-ThemisPolicy -PolicyPath .\baseline.json | Where-Object { -not $_.IsCompliant } | Export-ThemisReport -Path .\gaps.html
 
         Saves the rules that do not comply as an HTML report.
+
+    .EXAMPLE
+        Invoke-ThemisPolicy -Baseline Windows-Workstation -Exceptions .\exceptions.json
+
+        Audits the baseline; the rules listed in exceptions.json that do not comply are Excepted.
     #>
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject[]], [object[]])]
@@ -145,7 +164,11 @@ function Invoke-ThemisPolicy {
 
         [switch]$Strict,
 
-        [switch]$RollbackOnFailure
+        [switch]$RollbackOnFailure,
+
+        [switch]$NoFactCollection,
+
+        [object]$Exceptions
     )
 
     # 1. Initialize
@@ -228,6 +251,8 @@ function Invoke-ThemisPolicy {
     }
 
     Write-Verbose "Total rules after filtering: $($allRules.Count)"
+    $Facts = Resolve-ThemisFact -Facts $Facts -Rules $allRules -NoCollection:$NoFactCollection
+    $exceptionMap = Get-ThemisExceptionMap -Exceptions $Exceptions -RuleIds @($allRules | ForEach-Object { "$($_.ID)" })
     $results = @()
     $backupRules = [System.Collections.Generic.List[object]]::new()
     $backupFile = $null
@@ -243,12 +268,16 @@ function Invoke-ThemisPolicy {
         # Enforce changes the system: each rule asks ShouldProcess, and is only audited when
         # declined or when -WhatIf is used.
         $ruleMode = $Mode
-        if ($Mode -eq 'Enforce' -and -not $PSCmdlet.ShouldProcess("$type rule $($rule.ID) ($($rule.Name))", 'Enforce')) {
+        $exception = $exceptionMap["$($rule.ID)"]
+        # An accepted deviation is left as it is.
+        if ($exception) { $ruleMode = 'Audit' }
+        elseif ($Mode -eq 'Enforce' -and -not $PSCmdlet.ShouldProcess("$type rule $($rule.ID) ($($rule.Name))", 'Enforce')) {
             $ruleMode = 'Audit'
         }
 
         try {
             $res = Invoke-ThemisRuleCore -Type $type -Rule $rule -Mode $ruleMode -Facts $Facts -Prior $prior
+            $res = ConvertTo-ThemisExceptedResult -Result $res -Exception $exception
             $prior["$($rule.ID)"] = $res
 
             # Enrich Result with Enhanced Metadata
@@ -260,6 +289,8 @@ function Invoke-ThemisPolicy {
                 Type        = $type
                 Name        = $rule.Name
                 MacroLevel  = $rule.MacroLevel
+                Severity    = Get-ThemisSeverity -Rule $rule
+                References  = @($rule.References | Where-Object { $_ })
                 Status      = $res.Status
                 IsCompliant = $res.IsCompliant
                 Reason      = $res.Reason
@@ -267,6 +298,7 @@ function Invoke-ThemisPolicy {
                 Restorable  = $res.Restorable
                 RequiresRestart = $res.RequiresRestart
                 Verified    = $res.Verified
+                Exception   = $res.Exception
                 Backup      = $null
             }
             $results += $obj

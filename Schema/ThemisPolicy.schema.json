@@ -149,6 +149,28 @@
                     "RemoveKeyIfEmpty": {
                         "type": "boolean",
                         "description": "In backups: remove the key when it is left empty."
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
                     }
                 }
             }
@@ -218,6 +240,28 @@
                     "AllowStricter": {
                         "type": "boolean",
                         "description": "Accept a stricter startup type (Disabled meets Manual)."
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
                     }
                 }
             }
@@ -269,6 +313,28 @@
                             "type": "string"
                         },
                         "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
                     }
                 }
             }
@@ -332,6 +398,28 @@
                             "type": "string"
                         },
                         "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
                     }
                 }
             }
@@ -399,6 +487,28 @@
                             "type": "string"
                         },
                         "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
                     }
                 }
             }
@@ -485,6 +595,28 @@
                             "type": "string"
                         },
                         "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
                     }
                 }
             }
@@ -577,6 +709,28 @@
                             "type": "string"
                         },
                         "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
                     }
                 }
             }
@@ -632,6 +786,28 @@
                             "Enabled",
                             "Disabled"
                         ]
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
                     }
                 }
             }
@@ -688,6 +864,28 @@
                         "enum": [
                             "Absent"
                         ]
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
                     }
                 }
             }
@@ -751,6 +949,28 @@
                             "Absent"
                         ],
                         "default": "Present"
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
                     }
                 },
                 "additionalProperties": true
@@ -811,6 +1031,28 @@
                     "Exact": {
                         "type": "boolean",
                         "description": "Require exactly MaxSizeMB (restore rules use it)."
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
                     }
                 },
                 "additionalProperties": true
@@ -820,18 +1062,87 @@
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["ID", "Name", "TaskName"],
+                "required": [
+                    "ID",
+                    "Name",
+                    "TaskName"
+                ],
                 "properties": {
-                    "ID": { "type": "string" },
-                    "Name": { "type": "string" },
-                    "MacroLevel": { "type": "string", "enum": ["L1", "L2", "L3", "L4", "L5"], "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln." },
-                    "Description": { "type": "string" },
-                    "AppliesIf": { "type": "object", "description": "Conditions on the facts given with -Facts." },
-                    "DependsOn": { "type": "array", "items": { "type": "string" }, "description": "IDs of earlier rules that must be applicable and compliant first." },
-                    "RequiresRestart": { "type": "boolean", "description": "The change needs a restart to take effect." },                    "TaskPath": { "type": "string", "default": "\\", "description": "Folder of the task, starting and ending with a backslash." },
-                    "TaskName": { "type": "string" },
-                    "Ensure": { "type": "string", "enum": ["Disabled", "Enabled", "Absent", "Present"], "default": "Disabled" },
-                    "Xml": { "type": "string", "description": "Task definition, for Present (restore rules carry it)." }
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
+                    },
+                    "TaskPath": {
+                        "type": "string",
+                        "default": "\\",
+                        "description": "Folder of the task, starting and ending with a backslash."
+                    },
+                    "TaskName": {
+                        "type": "string"
+                    },
+                    "Ensure": {
+                        "type": "string",
+                        "enum": [
+                            "Disabled",
+                            "Enabled",
+                            "Absent",
+                            "Present"
+                        ],
+                        "default": "Disabled"
+                    },
+                    "Xml": {
+                        "type": "string",
+                        "description": "Task definition, for Present (restore rules carry it)."
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    }
                 },
                 "additionalProperties": true
             }
@@ -840,19 +1151,97 @@
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["ID", "Name", "DisplayName"],
+                "required": [
+                    "ID",
+                    "Name",
+                    "DisplayName"
+                ],
                 "properties": {
-                    "ID": { "type": "string" },
-                    "Name": { "type": "string" },
-                    "MacroLevel": { "type": "string", "enum": ["L1", "L2", "L3", "L4", "L5"], "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln." },
-                    "Description": { "type": "string" },
-                    "AppliesIf": { "type": "object", "description": "Conditions on the facts given with -Facts." },
-                    "DependsOn": { "type": "array", "items": { "type": "string" }, "description": "IDs of earlier rules that must be applicable and compliant first." },
-                    "RequiresRestart": { "type": "boolean", "description": "The change needs a restart to take effect." },                    "DisplayName": { "type": "string", "description": "Name of the rule; Themis only touches rules in its own group, ThemisRules." },
-                    "Program": { "type": "string", "description": "Full path of the .exe; environment variables are allowed." },
-                    "Direction": { "type": "string", "enum": ["Outbound", "Inbound"], "default": "Outbound" },
-                    "Action": { "type": "string", "enum": ["Block", "Allow"], "default": "Block" },
-                    "Ensure": { "type": "string", "enum": ["Present", "Absent"], "default": "Present" }
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
+                    },
+                    "DisplayName": {
+                        "type": "string",
+                        "description": "Name of the rule; Themis only touches rules in its own group, ThemisRules."
+                    },
+                    "Program": {
+                        "type": "string",
+                        "description": "Full path of the .exe; environment variables are allowed."
+                    },
+                    "Direction": {
+                        "type": "string",
+                        "enum": [
+                            "Outbound",
+                            "Inbound"
+                        ],
+                        "default": "Outbound"
+                    },
+                    "Action": {
+                        "type": "string",
+                        "enum": [
+                            "Block",
+                            "Allow"
+                        ],
+                        "default": "Block"
+                    },
+                    "Ensure": {
+                        "type": "string",
+                        "enum": [
+                            "Present",
+                            "Absent"
+                        ],
+                        "default": "Present"
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    }
                 },
                 "additionalProperties": true
             }
@@ -861,18 +1250,89 @@
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["ID", "Name", "Thumbprint"],
+                "required": [
+                    "ID",
+                    "Name",
+                    "Thumbprint"
+                ],
                 "properties": {
-                    "ID": { "type": "string" },
-                    "Name": { "type": "string" },
-                    "MacroLevel": { "type": "string", "enum": ["L1", "L2", "L3", "L4", "L5"], "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln." },
-                    "Description": { "type": "string" },
-                    "AppliesIf": { "type": "object", "description": "Conditions on the facts given with -Facts." },
-                    "DependsOn": { "type": "array", "items": { "type": "string" }, "description": "IDs of earlier rules that must be applicable and compliant first." },
-                    "RequiresRestart": { "type": "boolean", "description": "The change needs a restart to take effect." },                    "Thumbprint": { "type": "string", "pattern": "^[0-9A-Fa-f]{40}$" },
-                    "Store": { "type": "string", "enum": ["LocalMachine", "CurrentUser"], "default": "LocalMachine" },
-                    "Ensure": { "type": "string", "enum": ["Absent", "Present"], "default": "Absent" },
-                    "RawData": { "type": "string", "description": "The certificate in Base64, for Present (restore rules carry it)." }
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
+                    },
+                    "Thumbprint": {
+                        "type": "string",
+                        "pattern": "^[0-9A-Fa-f]{40}$"
+                    },
+                    "Store": {
+                        "type": "string",
+                        "enum": [
+                            "LocalMachine",
+                            "CurrentUser"
+                        ],
+                        "default": "LocalMachine"
+                    },
+                    "Ensure": {
+                        "type": "string",
+                        "enum": [
+                            "Absent",
+                            "Present"
+                        ],
+                        "default": "Absent"
+                    },
+                    "RawData": {
+                        "type": "string",
+                        "description": "The certificate in Base64, for Present (restore rules carry it)."
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    }
                 },
                 "additionalProperties": true
             }
@@ -881,17 +1341,77 @@
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["ID", "Name", "Path"],
+                "required": [
+                    "ID",
+                    "Name",
+                    "Path"
+                ],
                 "properties": {
-                    "ID": { "type": "string" },
-                    "Name": { "type": "string" },
-                    "MacroLevel": { "type": "string", "enum": ["L1", "L2", "L3", "L4", "L5"], "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln." },
-                    "Description": { "type": "string" },
-                    "AppliesIf": { "type": "object", "description": "Conditions on the facts given with -Facts." },
-                    "DependsOn": { "type": "array", "items": { "type": "string" }, "description": "IDs of earlier rules that must be applicable and compliant first." },
-                    "RequiresRestart": { "type": "boolean", "description": "The change needs a restart to take effect." },                    "Path": { "type": "string", "description": "Path of the file; environment variables are allowed." },
-                    "Publisher": { "type": "string", "description": "Text the signer must contain, such as O=Microsoft Corporation." },
-                    "AllowMissing": { "type": "boolean", "default": false }
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
+                    },
+                    "Path": {
+                        "type": "string",
+                        "description": "Path of the file; environment variables are allowed."
+                    },
+                    "Publisher": {
+                        "type": "string",
+                        "description": "Text the signer must contain, such as O=Microsoft Corporation."
+                    },
+                    "AllowMissing": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    }
                 },
                 "additionalProperties": true
             }
@@ -900,21 +1420,328 @@
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["ID", "Name", "Collection"],
+                "required": [
+                    "ID",
+                    "Name",
+                    "Collection"
+                ],
                 "properties": {
-                    "ID": { "type": "string" },
-                    "Name": { "type": "string" },
-                    "MacroLevel": { "type": "string", "enum": ["L1", "L2", "L3", "L4", "L5"], "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln." },
-                    "Description": { "type": "string" },
-                    "AppliesIf": { "type": "object", "description": "Conditions on the facts given with -Facts." },
-                    "DependsOn": { "type": "array", "items": { "type": "string" }, "description": "IDs of earlier rules that must be applicable and compliant first." },
-                    "RequiresRestart": { "type": "boolean", "description": "The change needs a restart to take effect." },                    "Collection": { "type": "string", "enum": ["Exe", "Script", "Msi", "Dll", "Appx"] },
-                    "Mode": { "type": "string", "enum": ["AuditOnly", "Enabled", "NotConfigured"], "default": "AuditOnly" },
-                    "DefaultRules": { "type": "boolean", "default": true, "description": "Allow the Windows and Program Files folders to everyone, and everything to administrators." },
-                    "AllowPublishers": { "type": "array", "items": { "type": "string" }, "description": "Publishers allowed anywhere, as AppLocker writes them." },
-                    "AllowPaths": { "type": "array", "items": { "type": "string" }, "description": "Extra folders or files allowed. Only use folders users cannot write to, or leave out the ones they can with AllowPathExceptions." },
-                    "AllowPathExceptions": { "type": "array", "items": { "type": "string" }, "description": "Paths the AllowPaths rules do not cover, such as the Downloads folder of every user." },
-                    "RestoreXml": { "type": "string", "description": "Restore rules only: the exact collection to put back." }
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on the facts given with -Facts."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
+                    },
+                    "Collection": {
+                        "type": "string",
+                        "enum": [
+                            "Exe",
+                            "Script",
+                            "Msi",
+                            "Dll",
+                            "Appx"
+                        ]
+                    },
+                    "Mode": {
+                        "type": "string",
+                        "enum": [
+                            "AuditOnly",
+                            "Enabled",
+                            "NotConfigured"
+                        ],
+                        "default": "AuditOnly"
+                    },
+                    "DefaultRules": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Allow the Windows and Program Files folders to everyone, and everything to administrators."
+                    },
+                    "AllowPublishers": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Publishers allowed anywhere, as AppLocker writes them."
+                    },
+                    "AllowPaths": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Extra folders or files allowed. Only use folders users cannot write to, or leave out the ones they can with AllowPathExceptions."
+                    },
+                    "AllowPathExceptions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Paths the AllowPaths rules do not cover, such as the Downloads folder of every user."
+                    },
+                    "RestoreXml": {
+                        "type": "string",
+                        "description": "Restore rules only: the exact collection to put back."
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    }
+                },
+                "additionalProperties": true
+            }
+        },
+        "DefenderPreferenceRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name"
+                ],
+                "properties": {
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "Setting": {
+                        "type": "string",
+                        "enum": [
+                            "DisableRealtimeMonitoring",
+                            "DisableBehaviorMonitoring",
+                            "DisableIOAVProtection",
+                            "DisableScriptScanning",
+                            "DisableRemovableDriveScanning",
+                            "DisableEmailScanning",
+                            "DisableArchiveScanning",
+                            "DisableBlockAtFirstSeen",
+                            "PUAProtection",
+                            "MAPSReporting",
+                            "SubmitSamplesConsent",
+                            "EnableNetworkProtection",
+                            "EnableControlledFolderAccess",
+                            "CloudBlockLevel",
+                            "CloudExtendedTimeout",
+                            "SignatureUpdateInterval"
+                        ],
+                        "description": "A Set-MpPreference setting. Give Setting and Value, or AsrRule."
+                    },
+                    "Value": {
+                        "description": "true/false, or a whole number, as Set-MpPreference takes it."
+                    },
+                    "Comparison": {
+                        "type": "string",
+                        "enum": [
+                            "Equal",
+                            "AtLeast",
+                            "AtMost",
+                            "Between",
+                            "In"
+                        ]
+                    },
+                    "Min": {
+                        "type": "number"
+                    },
+                    "Max": {
+                        "type": "number"
+                    },
+                    "AsrRule": {
+                        "type": "string",
+                        "pattern": "^[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}$",
+                        "description": "GUID of an attack surface reduction rule."
+                    },
+                    "AsrAction": {
+                        "type": "string",
+                        "enum": [
+                            "Block",
+                            "Audit",
+                            "Warn",
+                            "Disabled",
+                            "Absent"
+                        ],
+                        "default": "Block"
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on facts: a value, or {\"lt\"|\"le\"|\"gt\"|\"ge\"|\"eq\"|\"ne\": number}. Built-in facts are read from the machine (Get-ThemisFact)."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
+                    }
+                },
+                "additionalProperties": true
+            }
+        },
+        "DnsOverHttpsRules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "ID",
+                    "Name",
+                    "ServerAddress"
+                ],
+                "properties": {
+                    "ID": {
+                        "type": "string"
+                    },
+                    "Name": {
+                        "type": "string"
+                    },
+                    "MacroLevel": {
+                        "type": "string",
+                        "enum": [
+                            "L1",
+                            "L2",
+                            "L3",
+                            "L4",
+                            "L5"
+                        ],
+                        "description": "Hardening level. Invoke-ThemisPolicy -MacroLevel Ln evaluates rules up to Ln."
+                    },
+                    "Description": {
+                        "type": "string"
+                    },
+                    "ServerAddress": {
+                        "type": "string",
+                        "description": "IP address of the DNS server."
+                    },
+                    "Template": {
+                        "type": "string",
+                        "description": "DNS over HTTPS address, such as https://dns.quad9.net/dns-query."
+                    },
+                    "AllowFallbackToUdp": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "AutoUpgrade": {
+                        "type": "boolean",
+                        "default": true
+                    },
+                    "Ensure": {
+                        "type": "string",
+                        "enum": [
+                            "Present",
+                            "Absent"
+                        ],
+                        "default": "Present"
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "AppliesIf": {
+                        "type": "object",
+                        "description": "Conditions on facts: a value, or {\"lt\"|\"le\"|\"gt\"|\"ge\"|\"eq\"|\"ne\": number}. Built-in facts are read from the machine (Get-ThemisFact)."
+                    },
+                    "DependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "IDs of earlier rules that must be applicable and compliant first."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
+                    }
                 },
                 "additionalProperties": true
             }
@@ -967,6 +1794,28 @@
                     "Expected": {},
                     "Action": {
                         "type": "string"
+                    },
+                    "Severity": {
+                        "type": "string",
+                        "enum": [
+                            "Low",
+                            "Medium",
+                            "High",
+                            "Critical"
+                        ],
+                        "default": "Medium",
+                        "description": "How much a rule that does not comply weighs in the weighted score."
+                    },
+                    "References": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Where the rule comes from: benchmark IDs (CIS 2.3.1.1), documentation addresses."
+                    },
+                    "RequiresRestart": {
+                        "type": "boolean",
+                        "description": "The change needs a restart to take effect."
                     }
                 }
             }

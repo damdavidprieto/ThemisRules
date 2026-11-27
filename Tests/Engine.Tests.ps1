@@ -348,7 +348,7 @@ Describe 'Check provider' {
         $manual.Status | Should -Be 'Manual'
         $manual.Reason | Should -Match 'Turn on Secure Boot'
         @($manual.Previous).Count | Should -Be 0
-        (Invoke-ThemisRule -Type Check -Rule $rule).Status | Should -Be 'Unknown'
+        (Invoke-ThemisRule -Type Check -Rule $rule -NoFactCollection).Status | Should -Be 'Unknown'
     }
 }
 

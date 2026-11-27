@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-26
+
+### Added
+- **Facts about the machine.** `Get-ThemisFact` reads 42 facts (Secure Boot and its 2023 certificates, TPM,
+  BitLocker and its PIN, virtualization-based security, memory integrity, Credential Guard, kernel DMA protection,
+  the antivirus and Defender's mode, the last security update, Smart App Control, local accounts without a password,
+  DNS over HTTPS, devices, drivers that give direct access to hardware, unsigned services running as SYSTEM...).
+  `Invoke-ThemisPolicy` and `Invoke-ThemisRule` read the ones their `AppliesIf` conditions and Check rules use and
+  `-Facts` does not give, once per run; `-NoFactCollection` turns it off.
+- **Rule batches.** `Invoke-ThemisRule` takes several rules from the pipeline (objects with `Type` and `Rule`):
+  one read of the security policy, the audit policy and the facts, and `DependsOn` between them.
+- **`DefenderPreferenceRules`**: Microsoft Defender settings and attack surface reduction rules through
+  `Get-MpPreference` and `Set-MpPreference`; a change that Tamper Protection or a policy keeps is `EnforceFailed`.
+- **`DnsOverHttpsRules`**: the DNS over HTTPS template of a DNS server.
+- **Exceptions**: `Invoke-ThemisPolicy -Exceptions` (a file or objects with ID, Reason, Until and Owner). A rule
+  with a valid exception that does not comply is `Excepted`, and Enforce does not change it.
+- **`Severity` and `References`** on every rule and result. `Export-ThemisReport` adds `WeightedScore`,
+  `Excepted` and `NonCompliantBySeverity`, and leaves exceptions out of the scores. `Test-ThemisPolicy` checks
+  `Severity`.
+- **Workstation baseline 2.0.0** (164 rules): printer driver installation for administrators only, Redirection
+  Guard and RPC over TCP for printing, AES-only Kerberos, memory integrity and a check that Credential Guard
+  runs (L2, only where the hardware supports it), NTLM auditing, no MPR notifications, sudo off, the SMB
+  failed-logon delay, Defender cloud protection, samples and network protection; and a severity for the rules
+  whose failure exposes the most.
+
+### Removed
+- The alias `Get-ThemisProviders`. Use `Get-ThemisProvider`.
+
+### Changed
+- A Check rule on a built-in fact that `-Facts` does not give is now evaluated with the value Themis reads, instead
+  of being `Unknown`. Pass `-NoFactCollection` for the old behaviour.
+
 ## [1.9.0] - 2026-11-23
 
 ### Added

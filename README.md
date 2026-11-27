@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Audit and harden Windows with JSON policies. ThemisRules ships a ready-to-use **Windows workstation
-baseline** (150 rules in three levels) and lets you write your own policies with the same rule types.
+baseline** (164 rules in three levels) and lets you write your own policies with the same rule types.
 
 ```powershell
 Install-Module ThemisRules -Scope CurrentUser
@@ -15,8 +15,14 @@ Invoke-ThemisPolicy -Baseline Windows-Workstation -MacroLevel L1 |
     Export-ThemisReport -Path .\workstation-L1.html
 ```
 
-- **Seven rule types**: registry values, services, processes, advanced audit policy, password and
-  lockout policy, user rights assignment, and Windows Firewall profiles.
+- **19 rule types**: registry values, services, optional features, advanced audit policy, password and
+  lockout policy, user rights, firewall profiles and rules, Microsoft Defender settings and attack surface
+  reduction, DNS over HTTPS, AppLocker, scheduled tasks, root certificates, event log sizes, local group members,
+  protected folders, file signatures, processes and manual checks.
+- **Facts about the machine**: Secure Boot, BitLocker, memory integrity, the antivirus, the last security update
+  and 35 more, read by Themis itself for conditions (`AppliesIf`) and checks (`Get-ThemisFact`).
+- **Exceptions and severities**: accepted deviations with a reason and an end date are `Excepted`, and reports
+  give a score weighted by severity.
 - **Audit or Enforce**: check only, or apply the expected configuration. `-WhatIf` and `-Confirm`
   work with Enforce.
 - **Hardening levels L1 to L5**: `-MacroLevel L1` evaluates only the rules up to L1.
@@ -39,9 +45,11 @@ commonly recommend, for Windows 10 and 11:
 
 | Area | Examples | Rules |
 |---|---|---|
-| User Account Control and logon | Admin Approval Mode, secure desktop, inactivity lock, no automatic logon | 8 |
-| Credentials | No WDigest plain-text passwords, NTLMv2 only, no LM hashes, no anonymous enumeration, LSA protection (L2) | 9 |
-| Network | SMBv1 off, SMB signing, LLMNR off, NetBIOS P-node (L2) | 6 |
+| User Account Control and logon | Admin Approval Mode, secure desktop, inactivity lock, no automatic logon, no MPR notifications, sudo off | 10 |
+| Credentials | No WDigest plain-text passwords, NTLMv2 only, no LM hashes, no anonymous enumeration, NTLM auditing, LSA protection, memory integrity and a check that Credential Guard runs (L2) | 13 |
+| Kerberos | AES only, no DES or RC4 | 1 |
+| Printing | Only administrators install printer drivers; Redirection Guard and RPC over TCP (L2) | 3 |
+| Network | SMBv1 off, SMB signing, SMB failed-logon delay, LLMNR off, NetBIOS P-node (L2) | 7 |
 | Remote access | RDP with NLA and high encryption, no Remote Assistance, WinRM without Basic or unencrypted traffic | 8 |
 | Malware entry points | AutoPlay and AutoRun off, no elevated MSI installs, Defender PUA blocking, SmartScreen, Windows Script Host off (L3) | 7 |
 | Logging | Command line in process events, PowerShell script block logging, transcription (L2), event log sizes | 7 |
@@ -51,10 +59,10 @@ commonly recommend, for Windows 10 and 11:
 | Services | Remote Registry, UPnP/SSDP (L2), Internet Connection Sharing (L2), Print Spooler and WebClient (L3) | 6 |
 | Privacy | Diagnostic data limited to required (L2) | 1 |
 | User rights assignment | Nobody may act as part of the OS or create tokens; debug, drivers, backup and restore for Administrators only; Guests denied every logon type; local accounts denied network and RDP logons (L2) | 32 |
-| Microsoft Defender | Real-time, behavior, download and script scanning on; removable drives and email scanned; attack surface reduction: LSASS, vulnerable drivers and WMI persistence (L1), Office, script and USB rules (L2) | 19 |
+| Microsoft Defender | Real-time, behavior, download and script scanning on; removable drives and email scanned; cloud protection and samples; attack surface reduction: LSASS, vulnerable drivers and WMI persistence (L1), Office, script and USB rules (L2); network protection (L2) | 22 |
 
-- **L1** (111 rules): safe for any machine.
-- **L2** (36): stronger; may affect compatibility or convenience (for example LSA protection and
+- **L1** (120 rules): safe for any machine.
+- **L2** (41): stronger; may affect compatibility or convenience (for example LSA protection and
   third-party authentication plug-ins, Office attack surface reduction rules, or user rights that
   SQL Server and IIS add for their own accounts).
 - **L3** (3): high security; turns features off (Windows Script Host, printing, WebDAV).
@@ -131,7 +139,9 @@ A policy is a JSON file with a `Meta` section and one array per rule type:
 | `SecureFolderRules` | `Path` (absolute), `Sddl` (permissions, such as `D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)`), or `Ensure` (`Absent`) | Creates the folder with exactly those permissions (only the DACL is written). `Absent` gives it its parent's permissions back and removes it only if it is empty. |
 | `LocalGroupMemberRules` | `Group` (SID), `Member` (SID), `Ensure` (`Present`, `Absent`) | Direct membership of an account in a local group, such as `S-1-5-32-573` (Event Log Readers). SIDs, because group names depend on the Windows language. Reading works without elevation; changing needs it, and the account gets the new membership at its next sign-in. |
 | `EventLogRules` | `LogName`, `MaxSizeMB`, `Exact` | Maximum size of an event log, such as `Microsoft-Windows-PowerShell/Operational`. A larger log is compliant unless `Exact`. A log this Windows does not have is `NotApplicable`. Changing the size needs elevation. |
-| `CheckRules` | `Fact`, `Expected`, optional `Action` | Something that has to be done by hand (Secure Boot, BitLocker...). The fact comes from `-Facts`; a check that is not met is `Manual`, and Enforce never changes anything. |
+| `CheckRules` | `Fact`, `Expected`, optional `Action` | Something that has to be done by hand (Secure Boot, BitLocker...). A built-in fact is read by Themis (see *Facts about the machine*); others come from `-Facts`. A check that is not met is `Manual`, and Enforce never changes anything. |
+| `DefenderPreferenceRules` | `Setting` and `Value`, or `AsrRule` (GUID) and `AsrAction` (`Block`, `Audit`, `Warn`, `Disabled`) | A Microsoft Defender setting (`PUAProtection`, `MAPSReporting`, `EnableNetworkProtection`, `DisableRealtimeMonitoring`...) or one attack surface reduction rule, read and changed with `Get-MpPreference` and `Set-MpPreference`. These are the values Defender really uses: a change that Tamper Protection or a Group Policy keeps from happening is `EnforceFailed`. `NotApplicable` when another antivirus is the active one. Needs elevation to change. |
+| `DnsOverHttpsRules` | `ServerAddress`, `Template`, `AllowFallbackToUdp` (default false), `AutoUpgrade` (default true), `Ensure` | The DNS over HTTPS template of one DNS server (Windows 11), so Windows encrypts the queries to it. Whether every configured server has one is the `DnsEncrypted` fact. Needs elevation to change. |
 | `ProcessRules` | `Name`, `State` (`Absent`, `Present`) | `Absent` stops the process in Enforce mode. |
 | `ScheduledTaskRules` | `TaskPath`, `TaskName`, `Ensure` (`Disabled`, `Enabled`, `Absent`, `Present`), `Xml` | Disables, enables or removes a scheduled task. A missing task counts as disabled. Removing records the task definition, so the restore rule registers it again exactly as it was. |
 | `FirewallRuleRules` | `DisplayName`, `Program`, `Direction` (`Outbound`), `Action` (`Block`), `Ensure` | A firewall rule for one program, for example blocking outbound connections of `mshta.exe`. Themis only touches rules in its own group, `ThemisRules`. Needs elevation. |
@@ -139,7 +149,8 @@ A policy is a JSON file with a `Meta` section and one array per rule type:
 | `FileSignatureRules` | `Path`, `Publisher`, `AllowMissing` | A file must have a valid signature, optionally from one publisher. Enforce cannot fix it: a file that does not comply is `Manual`. |
 | `AppLockerRules` | `Collection` (`Exe`, `Script`, `Msi`, `Dll`, `Appx`), `Mode` (`AuditOnly`, `Enabled`, `NotConfigured`), `DefaultRules`, `AllowPublishers`, `AllowPaths`, `AllowPathExceptions` | One AppLocker rule collection. The standard rules let everyone run what is in the Windows and Program Files folders, and administrators anything; programs and scripts in Downloads, Temp or inside a `.zip` are not allowed. `AllowPathExceptions` leaves paths out of the `AllowPaths` rules: allowing `%OSDRIVE%\Users\*` except Downloads and Temp keeps the programs installed in user folders working and blocks what is downloaded. Start with `AuditOnly`: Windows logs what would be blocked in `Microsoft-Windows-AppLocker/*` without blocking it. Themis owns the rules named `Themis: ...` and keeps the others. AppLocker only acts while the Application Identity service (`AppIDSvc`) runs. Needs elevation. |
 
-Every rule takes `ID`, `Name` and optionally `MacroLevel` (`L1`-`L5`) and `Description`. Values can
+Every rule takes `ID`, `Name` and optionally `MacroLevel` (`L1`-`L5`), `Description`, `Severity` (`Low`, `Medium`,
+`High` or `Critical`; `Medium` when not given) and `References` (benchmark IDs or documentation addresses). Values can
 use `Comparison`: `Equal` (default), `AtLeast`, `AtMost`, `Between` (with `Min` and `Max`) or `In`
 (`Value` is a list); Enforce writes `Value`, or `WriteValue` when given. Any rule can set `RequiresRestart` when its
 change only takes effect after a restart.
@@ -163,8 +174,54 @@ Invoke-ThemisPolicy -PolicyPath .\policy.json -Facts @{ HasPrinters = $false; OS
 ```
 
 A condition is a value (equal; text without case) or a comparison (`lt`, `le`, `gt`, `ge`, `eq`,
-`ne`). When one is not met, or the fact was not given, the rule is `NotApplicable` and nothing is
-read or changed. A rule whose dependency is not applicable, failed, or in Enforce mode is still not
+`ne`). When one is not met, or the fact is not known, the rule is `NotApplicable` and nothing is
+read or changed.
+
+### Facts about the machine
+
+Themis reads the built-in facts that the rules of a run use and `-Facts` does not give, once per run and only
+from the sources needed. Nothing is changed. `-Facts` always wins, and `-NoFactCollection` turns the reading off.
+
+```powershell
+Get-ThemisFact -Name SecureBootOn, BitLockerSystemDrive, HvciRunning, UpdatesRecent
+Get-ThemisFact -ListAvailable | Format-Table Name, Description
+```
+
+| Source | Facts |
+|---|---|
+| Windows | `OSBuild`, `OSName`, `DisplayVersion`, `IsElevated`, `UserIsAdministrator`, `DomainJoined`, `IsLaptop` |
+| Firmware | `UefiFirmware`, `SecureBootOn`, `SecureBootCertsUpdated` (2023 certificates), `TpmPresent` |
+| Device Guard | `VbsCapable`, `VbsRunning`, `HvciRunning`, `CredentialGuardRunning`, `KernelDmaProtection`, `HasDmaPorts` |
+| BitLocker | `BitLockerSystemDrive`, `BitLockerStartupPin` (needs elevation) |
+| Antivirus | `AntivirusHealthy`, `AntivirusStatus`, `ThirdPartyAntivirus`, `DefenderActive`, `DefenderMode` |
+| Updates | `LastSecurityUpdateDays`, `UpdatesRecent` (40 days) |
+| Smart App Control | `SmartAppControlState`, `SmartAppControlOn` |
+| Accounts | `AllAccountsHavePassword`, `AccountsWithoutPassword` |
+| DNS | `DnsServers`, `DnsEncrypted` (every server has a DNS over HTTPS template) |
+| Devices | `HasPrinters`, `HasBluetooth`, `HasCamera`, `HasMicrophone`, `HasWifi`, `HasSmbShares` |
+| Drivers | `HwAccessDrivers`, `NoHwAccessDrivers` (drivers that tools and malware use to reach memory and ports) |
+| Services | `UnsignedSystemServices`, `SystemServicesSigned` (services running as SYSTEM a program without a valid signature) |
+
+A fact that cannot be read (it needs elevation, or this Windows does not have it) is `$null`: a check on it is
+`Unknown`.
+
+### Exceptions
+
+An accepted deviation is not a failure: list it with a reason, and optionally an end date and who accepted it.
+
+```json
+{ "Exceptions": [
+    { "ID": "WIN-SVC-005", "Reason": "The office printer needs the spooler", "Owner": "IT", "Until": "2027-06-30" }
+] }
+```
+
+```powershell
+Invoke-ThemisPolicy -Baseline Windows-Workstation -Exceptions .\exceptions.json
+```
+
+A rule with a valid exception that does not comply is `Excepted` (its reason says why and until when), Enforce
+leaves it as it is, and reports leave it out of the scores. After `Until` the exception is ignored, with a
+warning, and the rule counts again. A rule whose dependency is not applicable, failed, or in Enforce mode is still not
 compliant is `Skipped`, so a setting is never applied half way.
 
 ### One rule at a time
@@ -178,7 +235,14 @@ $r.Previous    # restore rules: pass each back with -Mode Enforce to undo the ch
 ```
 
 It returns the same result as each rule of `Invoke-ThemisPolicy` plus `Data`, `Previous` and
-`Condition` (the condition that was not met), and saves no backup: the caller keeps `Previous`. The schema is in
+`Condition` (the condition that was not met), and saves no backup: the caller keeps `Previous`.
+
+Several rules can go through the pipeline at once, as objects with `Type` and `Rule`. They share one read of the
+security policy, the audit policy and the facts, and each result is available to the next rules for `DependsOn`:
+
+```powershell
+$rules | ForEach-Object { @{ Type = $_.Type; Rule = $_ } } | Invoke-ThemisRule
+``` The schema is in
 [`Schema/ThemisPolicy.schema.json`](Schema/ThemisPolicy.schema.json) and there are small example
 policies in [`Examples/`](Examples/).
 
@@ -241,7 +305,10 @@ Reason      : MinimumPasswordLength is 8; required: 14 or more.
 Actual      : 8
 ```
 
-Status values: `Compliant`, `Non-Compliant`, `Fixed`, `MissingKey`, `MissingValue`, `MissingService`,
+Every result has `Severity`, `References` and `Exception`. `Export-ThemisReport` gives the compliance score, a
+score weighted by severity (Low 1, Medium 2, High 3, Critical 4) and the rules that do not comply by severity.
+
+Status values: `Compliant`, `Non-Compliant`, `Fixed`, `Excepted`, `MissingKey`, `MissingValue`, `MissingService`,
 `EnforceFailed` (the change did not take effect, usually because Group Policy defines the value),
 `NotApplicable` (its `AppliesIf` is not met, or the item does not exist on this machine),
 `NeedsElevation` (it can only be read as administrator), `Manual` (a check that has to be fixed by
